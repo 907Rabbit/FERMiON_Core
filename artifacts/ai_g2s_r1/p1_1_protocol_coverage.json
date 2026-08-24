@@ -1,0 +1,24 @@
+{
+  "format": "FERMiON-AI-G2S-P1.1-protocol-coverage-v1",
+  "protocol_id": "AI-G2S-P1.1",
+  "configuration_path": "configs/ai_g2s_p1_1.json",
+  "parent_configuration_sha256_path": "parent_config_sha256",
+  "coverage": {
+    "splits_and_dataset_seeds": ["datasets", "dataset_rng"],
+    "elliptic_operator": "tasks.elliptic_poisson_darcy",
+    "cross_resolution_task": "tasks.cross_resolution_fields",
+    "forecasting_task": "tasks.multiscale_forecasting",
+    "coordinate_permutation": ["tasks.coordinate_permutation", "dataset_rng.coordinate_permutation_seed"],
+    "tabular_task": "tasks.tabular_control",
+    "normalization_and_loss": "normalization",
+    "optimizer_checkpoint_selection": "training",
+    "six_conditions": "models",
+    "model_capacity_contract": "model_capacity_contract",
+    "cross_resolution_evaluation": "cross_resolution",
+    "paired_bootstrap_and_gate": "bootstrap",
+    "frequency_metrics": "frequency_metrics",
+    "test_isolation_and_hard_failures": "final_evaluation",
+    "required_reporting": "report_required"
+  },
+  "decision": {"parse_required": true, "source_implementation": "NOT_STARTED", "smoke_data": "NOT_ACCESSED", "final_test_predictions": "NOT_ACCESSED"}
+}

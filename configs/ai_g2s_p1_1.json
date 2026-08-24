@@ -1,0 +1,139 @@
+{
+  "protocol_id": "AI-G2S-P1.1",
+  "parent_config_sha256": "8F458D3CA9822897A7FBB7FF92314E312B37E9DF11E113E102D58DF71EACB8AD",
+  "purpose": "Frozen paired spectral-utility evaluation. Final test data is never used for selection or tuning.",
+  "training_seeds": [0, 1, 2],
+  "datasets": {
+    "elliptic_poisson_darcy": {"train": 1024, "validation": 256, "calibration": 128, "test_id": 256, "test_ood": 256, "independent_realizations": true},
+    "cross_resolution_fields": {"train": 1024, "validation": 256, "calibration": 128, "test_id": 256, "test_ood": 256, "independent_continuous_realizations": true},
+    "multiscale_forecasting": {"train": 2048, "validation": 512, "calibration": 256, "test_id": 512, "test_ood": 512, "independent_trajectories": true, "windows_cross_split_boundaries": false},
+    "coordinate_permutation": {"same_realizations_as": "elliptic_poisson_darcy", "resolution": [32, 32]},
+    "tabular_control": {"train": 4096, "validation": 1024, "calibration": 512, "test_id": 2048, "independent_realizations": true}
+  },
+  "dataset_rng": {
+    "bit_generator": "PCG64DXSM",
+    "seeds": {
+      "elliptic_poisson_darcy": {"train": 21001, "validation": 21002, "calibration": 21003, "test_id": 21004, "test_ood": 21005},
+      "cross_resolution_fields": {"train": 22001, "validation": 22002, "calibration": 22003, "test_id": 22004, "test_ood": 22005},
+      "multiscale_forecasting": {"train": 23001, "validation": 23002, "calibration": 23003, "test_id": 23004, "test_ood": 23005},
+      "tabular_control": {"train": 24001, "validation": 24002, "calibration": 24003, "test_id": 24004}
+    },
+    "coordinate_permutation_seed": 25001
+  },
+  "tasks": {
+    "elliptic_poisson_darcy": {
+      "domain": "periodic_[0,1)^2",
+      "equation": "-div(kappa grad u) + 0.1 u = f",
+      "input_channels": ["log_kappa", "forcing"],
+      "target": "u",
+      "random_field": {"family": "matern_like_gaussian", "nu": 1.5, "remove_zero_mode": true, "unit_rms_before_sampled_amplitude": true},
+      "id_and_calibration": {"permeability_length_uniform": [0.12, 0.25], "log_permeability_amplitude_uniform": [0.4, 0.8], "forcing_length_uniform": [0.08, 0.18]},
+      "ood": {"permeability_length_uniform": [0.04, 0.08], "log_permeability_amplitude_uniform": [0.9, 1.2], "forcing_length_uniform": [0.03, 0.06]},
+      "solver": {"scheme": "conservative_second_order_periodic_finite_volume", "face_permeability": "harmonic", "dtype": "float64", "method": "conjugate_gradients", "rtol": 1e-10, "atol": 0.0, "maxiter": 5000, "nonconvergence": "hard_failure"}
+    },
+    "cross_resolution_fields": {
+      "latent_domain": "continuous_periodic",
+      "train_id_calibration_radial_modes_max": 8,
+      "ood_radial_modes_range": [9, 16],
+      "ood_added_modes_total_rms_fraction": 0.3,
+      "operator": "tanh(G_0.025*x) + 0.25*G_0.10*(x^2 - mean(x^2))",
+      "gaussian_multiplier": "exp(-0.5*sigma^2*|k|^2)",
+      "render_resolutions": [[32, 32], [64, 64], [128, 128]],
+      "train_and_selection_resolution": [32, 32],
+      "primary_loss": "mean_ood_normalized_loss_at_64_and_128"
+    },
+    "multiscale_forecasting": {
+      "input_steps": 128,
+      "target_steps": 32,
+      "channels": 3,
+      "oscillators": 4,
+      "ar1_coefficient": 0.6,
+      "innovation_sd": 0.05,
+      "id_frequencies_uniform": [[0.01, 0.06], [0.12, 0.22]],
+      "id_frequency_draws_per_range": 2,
+      "id_modulation_uniform": [0.002, 0.01],
+      "ood_frequencies_uniform": [[0.065, 0.095], [0.24, 0.34]],
+      "ood_frequency_draws_per_range": 2,
+      "ood_modulation_uniform": [0.012, 0.02],
+      "windows_per_trajectory": 1
+    },
+    "coordinate_permutation": {"source_task": "elliptic_poisson_darcy", "permutation_scope": "all_input_channels_and_target", "preserve_across": ["splits", "models"]},
+    "tabular_control": {
+      "features": 64,
+      "covariance": "Sigma_ij = 0.5^abs(i-j)",
+      "feature_permutation": "single_fixed_random_permutation",
+      "target": "0.7*x0*x1 + sin(x2) + 0.3*x3^2 - 0.5*x4 + 0.2*x5*x6*x7 + 0.1*epsilon"
+    }
+  },
+  "normalization": {
+    "statistics_source": "training_split_only",
+    "spatial": "one_global_mean_and_sd_per_channel",
+    "forecasting": "one_mean_and_sd_per_channel",
+    "tabular": "featurewise_input_statistics_and_one_target_statistic",
+    "sd_floor": 1e-6,
+    "independent_test_realization_normalization": false,
+    "normalized_mse": "per_realization_mean_squared_error_after_frozen_training_target_standardization",
+    "multichannel_loss": "equal_channel_average"
+  },
+  "training": {
+    "optimizer": "AdamW",
+    "steps_per_model_task_seed": 4000,
+    "batch_size": 32,
+    "initial_learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "warmup_steps": 200,
+    "schedule": {"name": "cosine_decay", "final_learning_rate": 0.00003},
+    "gradient_clip_norm": 1.0,
+    "validation_interval_steps": 100,
+    "checkpoint_selection": {"metric": "validation_normalized_mse", "rule": "lowest", "tie_break": "earliest_checkpoint"},
+    "test_driven_early_stopping_or_retuning": false,
+    "identical_optimizer_steps_and_batches_across_models": true
+  },
+  "models": ["spectral", "spectral_ablation", "mlp_shared_point_patch", "transformer_patch_sinusoidal", "fully_convolutional_cnn", "fourier_neural_operator"],
+  "model_capacity_contract": {
+    "target_trainable_parameters": 524288,
+    "tolerance_fraction": 0.05,
+    "inert_parameter_padding": false,
+    "width_search": {"method": "deterministic_exhaustive_integer", "range": [16, 192], "tie_break": "smaller_width", "failure_if_outside_tolerance": true},
+    "spectral": {"blocks": 6, "kind": "AI_G1_gaussian_spectral_residual"},
+    "spectral_ablation": {"residual_path": "identical", "spectral_contribution": "fixed_zero"},
+    "mlp_shared_point_patch": {"blocks": 8, "kind": "shared_location_DeepSets_residual"},
+    "transformer_patch_sinusoidal": {"layers": 4, "heads": 4, "ffn_ratio": 4, "spatial_patch_size": [4, 4], "coordinates": "normalized_sinusoidal"},
+    "fully_convolutional_cnn": {"residual_blocks": 8, "kernel_size": [3, 3], "normalization": "GroupNorm", "activation": "GELU"},
+    "fourier_neural_operator": {"blocks": 4, "modes": 12, "low_rank_channel_mixing_rank": 8, "pointwise_residual": true},
+    "forecasting": "corresponding_1d_operations",
+    "tabular_layout": [8, 8],
+    "spectral_noise": {"training": "active", "validation": "deterministic_mean", "primary_final": "deterministic_mean", "uncertainty_diagnostic_draws": 32}
+  },
+  "cross_resolution": {
+    "selection_resolution": [32, 32],
+    "evaluation_resolutions": [[32, 32], [64, 64], [128, 128]],
+    "primary_loss": "mean_paired_ood_normalized_loss_at_64_and_128",
+    "cnn": "fully_convolutional",
+    "mlp": "shared_point_or_patch_processing; no_flattened_fixed_resolution_input",
+    "transformer": {"patch_size": [4, 4], "position_encoding": "normalized_2d_sinusoidal", "learned_fixed_length_position_table": false},
+    "spectral_and_fno": "same_physical_mode_cutoff_across_resolutions",
+    "common_physical_modes": "report_separately_within_training_grid_cutoff"
+  },
+  "bootstrap": {
+    "method": "deterministic_hierarchical_paired_percentile",
+    "resamples": 10000,
+    "seed": 20260822,
+    "resample_units": ["training_seed", "independent_test_realization"],
+    "improvement": "1 - mean(spectral_loss) / mean(ablation_loss)",
+    "confidence_interval": "percentile_95",
+    "spectral_task_success": {"minimum_improvement": 0.05, "ci_lower_bound_strictly_greater_than": 0.0},
+    "negative_control_material_advantage_forbidden": true,
+    "spectral_tasks_required": 2,
+    "aligned_task_primary_subset": "ood"
+  },
+  "frequency_metrics": {
+    "primary_spectrum": {"domain": "retained_nyquist_disk", "criterion": "K <= pi/dx", "radial_bins": 16, "include_rightmost_bin_edge": true},
+    "excluded_corner_shell_power": "report_separately",
+    "low_high_error": "ratio_of_aggregated_powers_not_unweighted_mean_of_bin_ratios",
+    "spectral_slope_fit": "nonempty_bins_with_nonzero_power_only",
+    "cross_resolution": "separately_report_common_physical_modes_within_training_grid_cutoff"
+  },
+  "final_evaluation": {"test_access": "after_validation_selection_only", "evaluations_per_selected_condition": 1, "hash_changes": "hard_failure", "missing_conditions": "hard_failure", "nonfinite_values": "hard_failure"},
+  "report_required": ["per_seed_results", "exact_data_splits", "all_model_comparisons", "parameter_counts", "training_budgets", "frequency_resolved_errors", "transfer_function", "collapse_diagnostics", "activation_residual_ratios", "gradient_norms", "nonfinite_counts", "configuration_hash", "code_hash", "result_hash"]
+}

@@ -1,0 +1,66 @@
+{
+  "baseline_budget": {
+    "max_to_min_ratio": 1.049914675767918,
+    "mlp": 4688,
+    "spectral_core": 4693,
+    "transformer": 4922
+  },
+  "config": {
+    "forgetting_tolerance": 0.05,
+    "image_side": 8,
+    "learning_rate": 0.015,
+    "modes": 8,
+    "samples": 72,
+    "seeds": [
+      101,
+      211,
+      307
+    ],
+    "sequential_steps": 28,
+    "token_dim": 16,
+    "train_steps": 28
+  },
+  "format": "FERMiON-AI-G2-results-v1",
+  "results": [
+    {
+      "calibration_ece": 0.024002334102988243,
+      "classification_accuracy": 1.0,
+      "forgetting": 0.0,
+      "image_reconstruction_mse": 0.03136734664440155,
+      "ood_auroc": 1.0,
+      "regression_mse": 0.02690550871193409,
+      "seed": 101,
+      "spectral_ablation_loss": 0.07317036390304565,
+      "spectral_loss": 0.10077743232250214,
+      "stochastic_mean_abs_delta": 0.01622767746448517,
+      "time_series_mse": 0.01602107286453247
+    },
+    {
+      "calibration_ece": 0.02938222512602806,
+      "classification_accuracy": 1.0,
+      "forgetting": 0.0,
+      "image_reconstruction_mse": 0.03014948219060898,
+      "ood_auroc": 1.0,
+      "regression_mse": 0.02472182735800743,
+      "seed": 211,
+      "spectral_ablation_loss": 0.11223062872886658,
+      "spectral_loss": 0.11269211024045944,
+      "stochastic_mean_abs_delta": 0.01852772943675518,
+      "time_series_mse": 0.02526559866964817
+    },
+    {
+      "calibration_ece": 0.022137999534606934,
+      "classification_accuracy": 1.0,
+      "forgetting": 0.0,
+      "image_reconstruction_mse": 0.031552620232105255,
+      "ood_auroc": 1.0,
+      "regression_mse": 0.02457156404852867,
+      "seed": 307,
+      "spectral_ablation_loss": 0.07703312486410141,
+      "spectral_loss": 0.09883030503988266,
+      "stochastic_mean_abs_delta": 0.019140098243951797,
+      "time_series_mse": 0.01847768947482109
+    }
+  ],
+  "sha256": "f4f185f8f94173b8d1d523d961752b6306c8cb91b7ce184e2fa6181131535563"
+}

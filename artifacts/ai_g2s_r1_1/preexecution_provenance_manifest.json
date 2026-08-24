@@ -1,0 +1,41 @@
+{
+  "format": "FERMiON-AI-G2S-R1.1-detached-provenance-v1",
+  "protocol": {
+    "p10_config_sha256": "8F458D3CA9822897A7FBB7FF92314E312B37E9DF11E113E102D58DF71EACB8AD",
+    "p11_config_sha256": "BBDAB6671494069BBA94D9E2D0382D9A91896C634BEB83A315E7936FC961B03C",
+    "coverage_audit_sha256": "F31B3F0D10C894DD02FD3FCB5FBE010CAE441561979C91B651DBD974C10AAA16"
+  },
+  "implementation": {
+    "runner_and_finalizer_path": "fermion/ai_g1/ai_g2s_r1.py",
+    "runner_and_finalizer_sha256": "6B3ACA5FFB5941482F2358BE360FCF7AF51E6C7BC8CC405514BA4F273EFF85C0",
+    "source_tree_manifest_sha256": "123B2DB25000E1628F8924BA3D28C149940E08F2D8CF635104320BF9360D7FF2",
+    "source_tree_digest": "e555538d1ca861a8a23ace4d2a7169d4cc50c30b7ba5d02803ab5bb8f6696e4d"
+  },
+  "artifacts": {
+    "environment_json_sha256": "9D7576A212A55F7A7BFA8CF4BB7163D318D11F0548DCEBA51A3D5801162187A9",
+    "calibration_smoke_json_sha256": "6B7CDA9CD8569C825F9762E139C430A8DFD8C0BE15DD8DE6897B6F15C954A846",
+    "calibration_smoke_attempts_json_sha256": "38435F2AAD7AA8D5B4218ED1B7FA3AEC6E084DB751E487C5C8E2AF2230507187",
+    "regression_final_json_sha256": "A5F890C0477CC770E5F344532AAD4AF6A53DE11BEAC2B003130FA87B273AB8EB",
+    "r1_unit_tests_sha256": "75E7D1478FE96B9D58E3E4DFC37FC6886573879CEAAEEC454A40E59C32E17030"
+  },
+  "frozen_reference": {
+    "path": "fermion/hr/reference_193.py",
+    "sha256": "8F544FCE6F0E7A03D52A9CBC46B366D0B9F82404B952CF479126CCA9D1EEF953"
+  },
+  "controls": {
+    "startup_hash_verification": "load_frozen_protocol verifies P1.0 and P1.1 SHA-256 values before the factory is created",
+    "test_isolation": "FinalTestAccessGate rejects final-test split generation unless the exact task:model:seed condition has validation selection recorded",
+    "hard_failures": ["configuration hash mismatch", "missing/unknown condition", "non-finite loss", "normalization SD floor violation", "checkpoint identity mismatch", "elliptic CG non-convergence"],
+    "smoke_state": "attempt 3 starts a fresh process; calibration_only_smoke constructs a new factory, sets torch.manual_seed(0) before each condition, constructs a new model and AdamW optimizer per condition, and never loads a checkpoint"
+  },
+  "executed_commands": {
+    "calibration_smoke": "& 'G:\\MyAIproject\\.venv\\Scripts\\python.exe' -c \"from pathlib import Path; from fermion.ai_g1.ai_g2s_r1 import atomic_json,calibration_only_smoke,load_frozen_protocol; root=Path('G:/MyAIproject'); result=calibration_only_smoke(load_frozen_protocol(root)); print(atomic_json(root/'artifacts/ai_g2s_r1_1/calibration_smoke.json',result))\"",
+    "regression": "& 'G:\\MyAIproject\\.venv\\Scripts\\python.exe' -m pytest -q -m 'not windows_ui' -p no:cacheprovider --basetemp G:\\tmp\\ai-g2s-r1-regression-final",
+    "full_paired_execution": null
+  },
+  "decision": {
+    "full_paired_execution": "GATED",
+    "scientific_conclusion": "NONE",
+    "reason": "No full benchmark entry point has been invoked and no final-test predictions were generated."
+  }
+}

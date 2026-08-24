@@ -1,0 +1,42 @@
+{
+  "format": "FERMiON-AI-G2S-launch-readiness-audit-v2",
+  "supersedes_blocked_audit": {
+    "path": "artifacts/ai_g2s_r1_1_launch_readiness_audit.json",
+    "raw_sha256": "093BA61874183C36ADD5D3241841CD62F78A33428CD759C7855C8873D53AE3FF"
+  },
+  "protocol_id": "AI-G2S-P1.1",
+  "runner_raw_sha256": "6E295F69968C373A783B16D45518C0A4687C96D9A2DB11084BEBDAFB9DDB635E",
+  "implementation_status": "REPAIRED_PREEXECUTION_EVIDENCE_PASS",
+  "full_paired_execution": "GATED_PENDING_EXPLICIT_LAUNCH_AUTHORIZATION",
+  "final_test_predictions": "NONE",
+  "verified_requirements": [
+    "raw SHA-256 is mandatory for JSON provenance; canonical JSON SHA-256 is optional and separate",
+    "detached PowerShell launcher verifies P1.0/P1.1 and all fixed source-manifest entries before importing the runner",
+    "runner repeats complete source-manifest, runner-byte, and frozen-config verification immediately before every test-loader unseal",
+    "source-manifest additions, omissions, and duplicates hard-fail",
+    "200-step linear warm-up and cosine decay to 3e-5 are applied per optimizer step",
+    "atomic, condition-identity-safe progress checkpoints retain model, optimizer, RNG, best-selection state, and runner hash",
+    "cross-resolution test endpoints evaluate 32^2, 64^2, and 128^2",
+    "finalization requires every selected test endpoint",
+    "finalization executes all five frozen 10,000-resample paired hierarchical task bootstraps",
+    "frequency and collapse diagnostics are atomically recorded",
+    "missing and non-finite final conditions hard-fail"
+  ],
+  "required_full_matrix": {
+    "tasks": 5,
+    "models": 6,
+    "training_seeds": 3,
+    "model_training_conditions": 90
+  },
+  "calibration_only_smoke": {
+    "raw_sha256": "20EF9BE86A3C17C5D06ECDB839655115D54E96B6A208998F7E10BE7C8AAD47E2",
+    "conditions": 30,
+    "test_data_accessed": false,
+    "scientific_verdict": null
+  },
+  "regression": {
+    "raw_sha256": "346B11E6E72BEBD6AC8E61F6F47C7055EB52D18013107C77218E30C5FE28D319",
+    "result": "229 passed, 1 deselected"
+  },
+  "scientific_status": "SPECTRAL_UTILITY_UNEARNED"
+}

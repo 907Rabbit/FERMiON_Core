@@ -1,0 +1,11 @@
+{
+  "cuda_available": false,
+  "deterministic_algorithms_current": false,
+  "deterministic_algorithms_enforced_by_full_runner": true,
+  "git_head": null,
+  "git_state": "repository_not_initialized",
+  "numpy": "2.5.1",
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.10",
+  "torch": "2.13.0+cpu"
+}

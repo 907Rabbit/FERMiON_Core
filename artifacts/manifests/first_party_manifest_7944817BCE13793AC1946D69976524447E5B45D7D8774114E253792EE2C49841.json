@@ -1,0 +1,388 @@
+{
+  "schema_version": "fermion-integration-provenance-v1",
+  "source_paths": [
+    "fermion",
+    "configs",
+    "scripts",
+    "pyproject.toml"
+  ],
+  "entries": [
+    {
+      "path": "configs/ai_g2s_p1_0.json",
+      "sha256": "8F458D3CA9822897A7FBB7FF92314E312B37E9DF11E113E102D58DF71EACB8AD"
+    },
+    {
+      "path": "configs/ai_g2s_p1_1.json",
+      "sha256": "BBDAB6671494069BBA94D9E2D0382D9A91896C634BEB83A315E7936FC961B03C"
+    },
+    {
+      "path": "fermion/__init__.py",
+      "sha256": "220438E253F277B91E74EFA7C094BE4F735EB7DC138A8BC5291D51042A48EC90"
+    },
+    {
+      "path": "fermion/__main__.py",
+      "sha256": "B1A7C5ED3DDA60D082B7722C2488F54B285F63EC8A63971A4B7998D2509A1B3D"
+    },
+    {
+      "path": "fermion/adapters/__init__.py",
+      "sha256": "F5F986EBFCA6AC3ADC580533463D9A4F92322A476ED16FBEBA392BE639DC22B9"
+    },
+    {
+      "path": "fermion/adapters/coding.py",
+      "sha256": "86CA05B5AE267715FB2E204EF07FC3CD71D79911F65E8AB89B97BF8BA3098FFF"
+    },
+    {
+      "path": "fermion/adapters/imhex.py",
+      "sha256": "A3AA6840AF08F106F15D257447D79FAD7F7CFB3C48CF93057E4118528988BD38"
+    },
+    {
+      "path": "fermion/adapters/internet.py",
+      "sha256": "3989DA5AB0D91330DB8E5479EFC1080E7826D077B4CE5704A41C5C2987A9E47C"
+    },
+    {
+      "path": "fermion/adapters/llama_cpp.py",
+      "sha256": "A00B138EF8393C981FDF16DAB5DD1D840D2D5594423252B5A6B49D8C520C9DAA"
+    },
+    {
+      "path": "fermion/adapters/local_program.py",
+      "sha256": "EFEAD3A659F409DEA3BBE6F6A6DF3AC0696EA6FCE030725E06D7702964791A02"
+    },
+    {
+      "path": "fermion/adapters/nmap_reports.py",
+      "sha256": "3D99EFA3DB8C990E648E6CB2483109AA7E1685BA57683471ED456B34832A7314"
+    },
+    {
+      "path": "fermion/adapters/notepad.py",
+      "sha256": "52193EF5FE4CF3268C3A4DFC5EE7337E92012970A675FC9CF38E72BC626B7FBA"
+    },
+    {
+      "path": "fermion/adapters/notepad_curriculum.py",
+      "sha256": "8E2D84D2337747664DD526B39C4D2D1E011C4BFB26619AD2CCABAD036DBBC7FA"
+    },
+    {
+      "path": "fermion/adapters/notepad_ui.py",
+      "sha256": "82A44CF3F7A25247E18339A6E722412B215C6CA2E0AFC0770A1B9BF2EC475746"
+    },
+    {
+      "path": "fermion/adapters/self_evolver.py",
+      "sha256": "BB2C5278064E2F2812AB4D2B4E71F551CE5228270FE6906A8A0A3C700A67D902"
+    },
+    {
+      "path": "fermion/adapters/unreal.py",
+      "sha256": "D9369C4DC92D00CF1B75D9D6C028DE37BE40D27FF8F50AF7678ACB30294D3878"
+    },
+    {
+      "path": "fermion/ai_g1/__init__.py",
+      "sha256": "9E2F7D1494D26326C169B9C22B78E5C5A2D4FB2D99C84F1494B3BCE78D320F41"
+    },
+    {
+      "path": "fermion/ai_g1/ai_g2.py",
+      "sha256": "98607AEB2612A7724743F28DED96EA43E9A74C79984E250D08C391671C77EA98"
+    },
+    {
+      "path": "fermion/ai_g1/ai_g2s.py",
+      "sha256": "1F46A5BAA11C32AC9F17B009FE1EE3BBA2AF8B983119D61B7E67A44A585C898F"
+    },
+    {
+      "path": "fermion/ai_g1/ai_g2s_r1.py",
+      "sha256": "6E295F69968C373A783B16D45518C0A4687C96D9A2DB11084BEBDAFB9DDB635E"
+    },
+    {
+      "path": "fermion/ai_g1/core.py",
+      "sha256": "6DB2C0709F45F8A5FCD2BD342BC7249475AC6C0A96C30A81A43C78FC724687C1"
+    },
+    {
+      "path": "fermion/ai_g1/diagnostics.py",
+      "sha256": "38C88290B802EBF1BF72465F90110800266AF79E9DD7903982A2D1D905700C63"
+    },
+    {
+      "path": "fermion/ai_g1/spectral.py",
+      "sha256": "DB33EE5C53F530BD9F439137805AE4E186B45DD19BA94E3EA10C90962ED76A66"
+    },
+    {
+      "path": "fermion/cognitive/__init__.py",
+      "sha256": "44414A9EF3A4197935E7AFA9379CDE67EB6763E7FD80C6FC57EA0510034A7A05"
+    },
+    {
+      "path": "fermion/cognitive/agent_bridge.py",
+      "sha256": "171C949E2424701A88FB7A66B8F3D1373612D27A1DC5301F2A8CE75955A00B37"
+    },
+    {
+      "path": "fermion/cognitive/capability_registry.py",
+      "sha256": "2E44DF8ACC0E0F6D2F3DF47268D7212BD7C4CE5FBC539EF9BA369368AE6851FE"
+    },
+    {
+      "path": "fermion/cognitive/chemistry.py",
+      "sha256": "EF6C5A34DF3E63159436819F8B570B204384FF13239AB8A537B82165EAB3999E"
+    },
+    {
+      "path": "fermion/cognitive/computation.py",
+      "sha256": "B9C802A64B77916A800CD2E8592B53932712249F8B6B8F442FCF1C330D377118"
+    },
+    {
+      "path": "fermion/cognitive/discovery.py",
+      "sha256": "49BD2C3E54EB91931968929AE21533E2AE8ADE6D9EEFFFF299ED21E78AA4F3E1"
+    },
+    {
+      "path": "fermion/cognitive/engineering.py",
+      "sha256": "787BC1CD1B26BFE2BE42405537BD00B62F4EED9F2D562494DE4DDAD385D75AF2"
+    },
+    {
+      "path": "fermion/cognitive/evidence.py",
+      "sha256": "785E2277CB593DF3314899C6F1540760B0A620A5CD1A9CE976D188F72D0A3C7C"
+    },
+    {
+      "path": "fermion/cognitive/evidence_grounding.py",
+      "sha256": "E70845FB3330B38AAF59B13C0994F339A13441D8A9E10B7FB778603E8A0087CA"
+    },
+    {
+      "path": "fermion/cognitive/integration_registry.py",
+      "sha256": "F2F6E209B40C4BEE52C2EBF4FF9478B8841F1203002A28F75B74A4B097DD5D96"
+    },
+    {
+      "path": "fermion/cognitive/integration_runtime.py",
+      "sha256": "8D894A717FF443413F59BDBE38EBD3AED17A610D78860A2758C57CDF3812FE86"
+    },
+    {
+      "path": "fermion/cognitive/llm.py",
+      "sha256": "1A35D5375CFC881FE618B9CD199568EDED48E4EDE647E214A45B6BB55593F0D1"
+    },
+    {
+      "path": "fermion/cognitive/memory.py",
+      "sha256": "90FFFA1BD93B1A5214DD7270F74C06E5589F5C6D93F1F70EAB74883435B6F6FF"
+    },
+    {
+      "path": "fermion/cognitive/network.py",
+      "sha256": "59136EAF352FA2D43DABFC56C3042B244800A5DD75D485676CD6E6FF74A7BA41"
+    },
+    {
+      "path": "fermion/cognitive/release_candidates.py",
+      "sha256": "8C98CC508A7789AED37372B10A9A93351B00CDE292BF46B8FEFCF1DFE4EFF97F"
+    },
+    {
+      "path": "fermion/cognitive/release_governance.py",
+      "sha256": "BE69540CC5931A65651FCFEFADA6004EBD86C828A2244B9AE34DF6199E4EBAA3"
+    },
+    {
+      "path": "fermion/cognitive/reproducibility.py",
+      "sha256": "DE1ED55D95C1E6364F99AC8E6E20C3595EF77DD0763CBB9FD50D87267DDDA302"
+    },
+    {
+      "path": "fermion/cognitive/runtime.py",
+      "sha256": "5FEB3A9BF2EEB4FB917C3B2CF22D077C30CFD4211F28BB23FB62014681A328D2"
+    },
+    {
+      "path": "fermion/cognitive/science.py",
+      "sha256": "A62A8AB31BFF50367272A81C3A30D13D1EBC1D491562AF8A164DDC0AA2E106C4"
+    },
+    {
+      "path": "fermion/cognitive/scientific_gates.py",
+      "sha256": "FCA1B6863511A94663CC9B2563EDE5CBE1AD828432F8510AF83157BF33C83EAB"
+    },
+    {
+      "path": "fermion/cognitive/scientific_ir.py",
+      "sha256": "69BB4563AD31D8BE8B81A1A40C6366545A11D5A410BC02BB70F360425526C9E9"
+    },
+    {
+      "path": "fermion/cognitive/scientific_routing.py",
+      "sha256": "784CF445295B6CD07F5E2E2C1ADB4458658DF6EBDE5D96E88D8E18293E23D6C6"
+    },
+    {
+      "path": "fermion/cognitive/skills.py",
+      "sha256": "DE6B7A2EB0FD2E99653175DF9AA4597849CEF8729A585F903B420C7F625FFAB3"
+    },
+    {
+      "path": "fermion/cognitive/tool_bridge.py",
+      "sha256": "121E9DC287396F8A72574CA6A2EFF4B2127FBF0E1A8E51FF9506C4C803BEC602"
+    },
+    {
+      "path": "fermion/cognitive/web_research.py",
+      "sha256": "4896699DABED04BBBBCD7C4D9546C9AC38221BFA4BD955152A664F03A7A576D3"
+    },
+    {
+      "path": "fermion/cognitive/workspace.py",
+      "sha256": "9F7B99725E6E411D98BB0EFA8C929DE61E52BE4B1CBB2D7824B765051300BA20"
+    },
+    {
+      "path": "fermion/control_plane.py",
+      "sha256": "E685FAD8F8B92D8B29F6CBCE5B8F5C9E5532AA7CAAAD599257D7EA990567953F"
+    },
+    {
+      "path": "fermion/curriculum.py",
+      "sha256": "6ACB95F996194D7A534503FBAFD0821114EAE25B08878CE5E504087DC48C949E"
+    },
+    {
+      "path": "fermion/dashboard.py",
+      "sha256": "3A608C2069B5BC72244B1C2A8A35C5BF6A2415CE95B2FFD5268DD8AFB2549FAB"
+    },
+    {
+      "path": "fermion/hr/__init__.py",
+      "sha256": "79071E09B1B4B1B7213762D36AFBE7430BDA888CD0BA8CA4A5FA08B3C523C314"
+    },
+    {
+      "path": "fermion/hr/ablations.py",
+      "sha256": "158BB9D4735BEC5E1EEEC62D9C1E6986CAB0CC6BE36FE3874158AB2F6A51D738"
+    },
+    {
+      "path": "fermion/hr/checkpoint.py",
+      "sha256": "D4B2A0E8EEE480143342FDC9AB518D13630A963CF0ADD69C1E770C653073EF36"
+    },
+    {
+      "path": "fermion/hr/config.py",
+      "sha256": "75825E15DD37F8B6E2320C4905309707E79CA6252371DE79624DDCD99A8B72D0"
+    },
+    {
+      "path": "fermion/hr/contracts.py",
+      "sha256": "4DC9C2723D4E7ADD5C21E1B40CD1710323A8F2C4DBB60C8750C5C3BB348FF91A"
+    },
+    {
+      "path": "fermion/hr/diagnostics.py",
+      "sha256": "FA808898B601A5D4CDF0ED4B674A8DA65A29EC48E9BFD0F9727695734DCB419F"
+    },
+    {
+      "path": "fermion/hr/encoders.py",
+      "sha256": "E0BA10D4D758B1A5BED2B40CE91B80FE3A82028975754F043983927B16A56F6A"
+    },
+    {
+      "path": "fermion/hr/energy.py",
+      "sha256": "12993AB4CDB8529B466FBE2FCBA068B6CC7C7669296B72550BC3B79F84E3AE73"
+    },
+    {
+      "path": "fermion/hr/memory.py",
+      "sha256": "E44943D50C4566FA561610D9A6B44E6A379CC5D8CA5FE2747ABD1A931F82027D"
+    },
+    {
+      "path": "fermion/hr/recursive_core.py",
+      "sha256": "9B8051E022F81BD36A2556C87D528E87F0C65C32A1DE3B17A27739544A0EFFB4"
+    },
+    {
+      "path": "fermion/hr/reference_193.py",
+      "sha256": "8F544FCE6F0E7A03D52A9CBC46B366D0B9F82404B952CF479126CCA9D1EEF953"
+    },
+    {
+      "path": "fermion/hr/routing.py",
+      "sha256": "553C3D12882A584B6A12C7B6BEE26775A2B6A36514647D083B7201DA23B461A0"
+    },
+    {
+      "path": "fermion/hr/system.py",
+      "sha256": "FFEDBF9FF1949A61F3640A72DEC52A52AF0156C694EE6F7D33075F3FA727035A"
+    },
+    {
+      "path": "fermion/hr/trainer.py",
+      "sha256": "D1EF3D48248860CE8E56128957A101168921D0A117BD257E37450822E5E24E2F"
+    },
+    {
+      "path": "fermion/hr/transition.py",
+      "sha256": "D4BA141CC2AC32F2DCE64C5EA89C0A530BFD945FED1FCC20DF9C5347AF3BF86D"
+    },
+    {
+      "path": "fermion/hr/uncertainty.py",
+      "sha256": "07671C82F14891B7B518BB216B01461B85B4861FCA1CB0EB106CE202B057D725"
+    },
+    {
+      "path": "fermion/research/__init__.py",
+      "sha256": "F933202A7152DEB52C0994D92403C4B5E0163C0D7D57BCB0E812944A00714B70"
+    },
+    {
+      "path": "fermion/research/symplectic_dysib.py",
+      "sha256": "38C7E1026225558DE377265E02859E4C2A2F28717E2BD6C896A7A912688F379A"
+    },
+    {
+      "path": "fermion/safe_self_evolver.py",
+      "sha256": "02E17AA9B5ADE75D96DB36CDF3E00B804E872C02C8E093D6AF2C183DA1A25A9D"
+    },
+    {
+      "path": "fermion/software/__init__.py",
+      "sha256": "0E348F6866FD046DC52C8096DF246BFB1F988EED2DEDBD02F4DB8A564BDE95EC"
+    },
+    {
+      "path": "fermion/software/actions.py",
+      "sha256": "81F980BF78D484171AA265CEF370CE44A0D70FA8360EE0C348C927790866AE5C"
+    },
+    {
+      "path": "fermion/software/application.py",
+      "sha256": "3F63CDF6337EDC883EE40EAA9EBC2F36ED27F6D93416ABCF51DAE81D579D9844"
+    },
+    {
+      "path": "fermion/software/capabilities.py",
+      "sha256": "2C4D2E3FDAB09DAB9F9D27E3056A1021C6DB6EE5488D6C08C2E0475F8C130D3B"
+    },
+    {
+      "path": "fermion/software/diagnostic_transition.py",
+      "sha256": "B81363D2CC9AF922906C58BFFF140374A96A9390AF446012548B444BE8009C16"
+    },
+    {
+      "path": "fermion/software/executor.py",
+      "sha256": "A487B56C049FA251A807C970B91F3B8F74036095F49A5866384617E9F2DE6104"
+    },
+    {
+      "path": "fermion/software/interfaces.py",
+      "sha256": "7623CB740141DD5DD8B365CCEE2A3A715C1993E74049FDBCE3B6EE3D92BC76DD"
+    },
+    {
+      "path": "fermion/software/kernel.py",
+      "sha256": "10133E41276283B0D55674384C1127946B9AEB10245FE2BFD4DBF8B1B9B2830D"
+    },
+    {
+      "path": "fermion/software/learning_manager.py",
+      "sha256": "7CA9BBB8AFE8D5D22C1FDD40957D048E1974BBD486165FC50F7652758A2EEEE7"
+    },
+    {
+      "path": "fermion/software/observation.py",
+      "sha256": "006F158A6268FF7E5A9F3C5FF4EDC7BB994F938F2130A01FBFE1BCC4FEE8E628"
+    },
+    {
+      "path": "fermion/software/outcomes.py",
+      "sha256": "F2DF4AE40BBFD6B3A2EB622F9FD1204B235935C269A13A5776A2E7A24F6FD6BE"
+    },
+    {
+      "path": "fermion/software/ownership.py",
+      "sha256": "0D7B8285D164487A0505B8E31D281EC497C3F16D522078B158EFE69BB4BE0D74"
+    },
+    {
+      "path": "fermion/software/recorder.py",
+      "sha256": "41F1E4E8963E49B0CF4542008E9C457D02026B87AF44EE69B817E37BF9ED1E19"
+    },
+    {
+      "path": "fermion/software/replay.py",
+      "sha256": "DA38A3BE520B2A1D9B745F70BAF8B7EE5AEBB66A4A92F31256D2977313AF921C"
+    },
+    {
+      "path": "fermion/software/safe_self_evolver.py",
+      "sha256": "805AC68EC2A8211A69399262DA5C13EA763F60353819651FB3C121898767FF3D"
+    },
+    {
+      "path": "fermion/software/skill_acquisition.py",
+      "sha256": "9B3EA4ACB1F5A057A4889AD358B056ACB957FD9B2D2DC5C6D21F784BEE1D5F89"
+    },
+    {
+      "path": "fermion/software/skills.py",
+      "sha256": "C5FD0695D0D3E12B0354C82AA4980AD6BB5227A826D43B7E8F99D6824D7DAFDA"
+    },
+    {
+      "path": "fermion/software/ui_skill_acquisition.py",
+      "sha256": "86490C76ED850FBF2A5DFF20242FB806D7C32ACC6DAB9FDF0FA212694BEDC83D"
+    },
+    {
+      "path": "fermion/software/validators.py",
+      "sha256": "CEFADA3A5C3FA6D5241B4062FF07527AF33669F27F34E50CA8F8707CB26C3895"
+    },
+    {
+      "path": "fermion/software/windows.py",
+      "sha256": "D1C4BF825F6A6CACF4510C332EB20FD9FE13ED6D72A92ED49C262B0F66EA791F"
+    },
+    {
+      "path": "fermion/task.py",
+      "sha256": "6813477F1BCCDF3360C9A7BB210ACD611C17B0FCBB5EEE3438D50F6222FF8B6E"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "520AEF11D4932AD0319A454663C8E79B80410E9EB8F5F8B45F15EA51416F3BED"
+    },
+    {
+      "path": "scripts/launch_ai_g2s_p1_1.ps1",
+      "sha256": "AEC8091FBECF6A99AF097BC76B222A21E0F3FB1DF5EFF52B0B01C0A42F7E5447"
+    }
+  ],
+  "manifest_sha256": "7944817BCE13793AC1946D69976524447E5B45D7D8774114E253792EE2C49841"
+}

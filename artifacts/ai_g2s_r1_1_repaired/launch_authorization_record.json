@@ -1,0 +1,46 @@
+{
+  "format": "FERMiON-AI-G2S-P1.1-launch-authorization-v1",
+  "recorded_at_utc": "2026-08-23T09:08:54.4001257Z",
+  "status": "READY_FOR_EXPLICIT_USER_AUTHORIZATION_ONLY",
+  "working_directory": "G:\\MyAIproject",
+  "functional_command": "Set-Location 'G:\\MyAIproject'; New-Item -ItemType Directory -Force 'G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full' | Out-Null; $env:PYTHONHASHSEED='0'; $env:CUBLAS_WORKSPACE_CONFIG=':4096:8'; & powershell -NoProfile -ExecutionPolicy Bypass -File 'G:\\MyAIproject\\scripts\\launch_ai_g2s_p1_1.ps1' -SourceManifest 'G:\\MyAIproject\\artifacts\\ai_g2s_r1_1_repaired\\source_manifest.json' -SourceManifestRawSha256 '5920FE278132D5DBCCD4DBB4F93232F7A420C8B497CA9E2358D0E7FDFED23C8D' -Root 'G:\\MyAIproject' -Output 'G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full' *>&1 | Tee-Object -FilePath 'G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\run.log'",
+  "python_executable": "G:\\MyAIproject\\.venv\\Scripts\\python.exe",
+  "deterministic_environment": {
+    "PYTHONHASHSEED": "0",
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "runner_enforces_torch_deterministic_algorithms": true,
+    "dataset_rng": "numpy.PCG64DXSM"
+  },
+  "paths": {
+    "output_root": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full",
+    "checkpoints": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\checkpoints",
+    "results": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\results.json",
+    "results_csv": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\results.csv",
+    "frequency_diagnostics": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\frequency_diagnostics.json",
+    "collapse_diagnostics": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\collapse_diagnostics.json",
+    "bootstrap": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\bootstrap.json",
+    "final_manifest": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\final_manifest.json",
+    "log": "G:\\MyAIproject\\artifacts\\ai_g2s_p1_1_full\\run.log"
+  },
+  "resume_policy": {
+    "identity": "task:model:training_seed",
+    "atomic_progress": true,
+    "resume_requires_matching_condition_and_runner_hash": true,
+    "partial_or_mismatched_checkpoint": "hard_failure",
+    "silent_rerun_of_selected_condition": false
+  },
+  "expected_full_matrix": {"tasks": 5, "models": 6, "training_seeds": 3, "model_training_conditions": 90},
+  "finalization_requirements": {
+    "all_registered_test_endpoints": true,
+    "paired_task_bootstraps": 5,
+    "paired_bootstrap_resamples_each": 10000,
+    "missing_conditions_hard_failure": true,
+    "nonfinite_values_hard_failure": true,
+    "reverify_sources_immediately_before_each_test_unseal": true
+  },
+  "preexecution_provenance": {
+    "path": "G:\\MyAIproject\\artifacts\\ai_g2s_r1_1_repaired\\preexecution_provenance_manifest.json",
+    "raw_sha256": "595F74D8A1B41A03061107A076E5841FE8C1B4DE9AF05878E9142D6160A270EB"
+  },
+  "scientific_status_before_launch": {"final_test_predictions": "NONE", "spectral_utility": "UNEARNED"}
+}

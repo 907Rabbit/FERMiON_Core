@@ -1,0 +1,10 @@
+{
+  "label": "non_scientific_smoke_development_history",
+  "test_data_accessed": false,
+  "spectral_utility_verdict": null,
+  "attempts": [
+    {"attempt": 1, "status": "FAILED", "reason": "cross_resolution_fields smoke declaration used two input channels for a one-channel generator"},
+    {"attempt": 2, "status": "FAILED", "reason": "forecast smoke head preserved 128 input steps instead of matching the 32-step target horizon"},
+    {"attempt": 3, "status": "PASS", "result_file": "calibration_smoke.json", "training_seed": 0, "examples_per_condition": 2, "optimizer_steps_per_condition": 2, "condition_count": 30}
+  ]
+}

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fermion-hr"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["torch>=2.13", "numpy>=2.5", "pydantic-ai-slim>=2.27"]
+
+[project.optional-dependencies]
+test = ["pytest>=9"]
+windows-ui = ["pywinauto>=0.6.9"]
+
+[project.scripts]
+fermion = "fermion.__main__:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["windows_ui: requires an interactive Windows desktop, Notepad, and pywinauto"]

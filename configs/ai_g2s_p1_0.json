@@ -1,0 +1,60 @@
+{
+  "protocol_id": "AI-G2S-P1.0",
+  "purpose": "Frozen paired spectral-utility evaluation; final test data is never used for selection or tuning.",
+  "training_seeds": [0, 1, 2],
+  "datasets": {
+    "poisson_darcy": {"train": 1024, "validation": 256, "test": 512, "independent_realizations": true},
+    "cross_resolution_fields": {"train": 1024, "validation": 256, "test": 512, "independent_continuous_realizations": true},
+    "multiscale_forecasting": {"train": 2048, "validation": 512, "test": 1024, "independent_trajectories": true, "windows_cross_split_boundaries": false},
+    "coordinate_permutation": {"same_realizations_as": "poisson_darcy"},
+    "tabular_control": {"train": 4096, "validation": 1024, "test": 2048, "independent_realizations": true}
+  },
+  "training": {
+    "optimizer": "AdamW",
+    "steps_per_model_task_seed": 4000,
+    "batch_size": 32,
+    "initial_learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "warmup_steps": 200,
+    "schedule": {"name": "cosine_decay", "final_learning_rate": 0.00003},
+    "gradient_clip_norm": 1.0,
+    "validation_interval_steps": 100,
+    "checkpoint_selection": {"metric": "validation_normalized_mse", "rule": "lowest", "tie_break": "earliest_checkpoint"},
+    "test_driven_early_stopping_or_retuning": false,
+    "parameter_budget_max_ratio": 1.05,
+    "identical_optimizer_steps_and_batches_across_models": true
+  },
+  "models": ["spectral", "spectral_ablation", "mlp_shared_point_patch", "transformer_patch_sinusoidal", "fully_convolutional_cnn", "fourier_neural_operator"],
+  "cross_resolution": {
+    "selection_resolution": [32, 32],
+    "evaluation_resolutions": [[32, 32], [64, 64], [128, 128]],
+    "primary_loss": "mean_paired_normalized_loss_at_64_and_128",
+    "cnn": "fully_convolutional",
+    "mlp": "shared_point_or_patch_processing; no_flattened_fixed_resolution_input",
+    "transformer": {"patch_size": [4, 4], "position_encoding": "normalized_2d_sinusoidal", "learned_fixed_length_position_table": false},
+    "spectral_and_fno": "same_physical_mode_cutoff_across_resolutions",
+    "common_physical_modes": "report separately within_training_grid_cutoff"
+  },
+  "bootstrap": {
+    "method": "deterministic_hierarchical_paired_percentile",
+    "resamples": 10000,
+    "seed": 20260822,
+    "resample_units": ["training_seed", "independent_test_realization"],
+    "improvement": "1 - mean(spectral_loss) / mean(ablation_loss)",
+    "confidence_interval": "percentile_95",
+    "spectral_task_success": {"minimum_improvement": 0.05, "ci_lower_bound_strictly_greater_than": 0.0},
+    "negative_control_material_advantage_forbidden": true
+  },
+  "frequency_metrics": {
+    "primary_spectrum": {"domain": "retained_nyquist_disk", "criterion": "K <= pi/dx", "radial_bins": 16, "include_rightmost_bin_edge": true},
+    "excluded_corner_shell_power": "report_separately",
+    "low_high_error": "ratio_of_aggregated_powers_not_unweighted_mean_of_bin_ratios",
+    "spectral_slope_fit": "nonempty_bins_with_nonzero_power_only",
+    "cross_resolution": "separately_report_common_physical_modes_within_training_grid_cutoff"
+  },
+  "report_required": [
+    "per_seed_results", "exact_data_splits", "all_model_comparisons", "parameter_counts", "training_budgets",
+    "frequency_resolved_errors", "transfer_function", "collapse_diagnostics", "activation_residual_ratios",
+    "gradient_norms", "nonfinite_counts", "configuration_hash", "code_hash", "result_hash"
+  ]
+}

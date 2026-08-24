@@ -1,0 +1,35 @@
+{
+  "format": "FERMiON-AI-G2S-R1-protocol-coverage-v1",
+  "protocol_id": "AI-G2S-P1.0",
+  "configuration_path": "configs/ai_g2s_p1_0.json",
+  "configuration_sha256": "8F458D3CA9822897A7FBB7FF92314E312B37E9DF11E113E102D58DF71EACB8AD",
+  "coverage": [
+    {"requirement": "training seeds", "path": "training_seeds", "status": "covered"},
+    {"requirement": "dataset cardinalities and independent-unit declarations", "path": "datasets", "status": "covered"},
+    {"requirement": "optimizer, steps, batch size, schedule, clipping, and validation cadence", "path": "training", "status": "covered"},
+    {"requirement": "validation-only lowest-loss/earliest-tie checkpoint rule", "path": "training.checkpoint_selection", "status": "covered"},
+    {"requirement": "six compared condition names", "path": "models", "status": "covered"},
+    {"requirement": "cross-resolution evaluation resolutions and architectural constraints", "path": "cross_resolution", "status": "covered"},
+    {"requirement": "paired hierarchical bootstrap method, seed, resamples, units, confidence interval, and gate", "path": "bootstrap", "status": "covered"},
+    {"requirement": "frequency-metric definitions", "path": "frequency_metrics", "status": "covered"},
+    {"requirement": "required report fields", "path": "report_required", "status": "covered"},
+    {"requirement": "calibration-only smoke realizations and their split membership", "path": null, "status": "BLOCKED"},
+    {"requirement": "dataset generator distributions, domains, boundary conditions, and normalization", "path": null, "status": "BLOCKED"},
+    {"requirement": "deterministic dataset/split seeds and exact split construction", "path": null, "status": "BLOCKED"},
+    {"requirement": "definition of normalized MSE", "path": null, "status": "BLOCKED"},
+    {"requirement": "concrete capacities for spectral, ablation, MLP, Transformer, CNN, and FNO", "path": null, "status": "BLOCKED"},
+    {"requirement": "FNO mode count and cross-channel mixing specification", "path": null, "status": "BLOCKED"},
+    {"requirement": "operator-specific Poisson/Darcy task construction", "path": null, "status": "BLOCKED"},
+    {"requirement": "held-out forecasting frequency/regime construction", "path": null, "status": "BLOCKED"},
+    {"requirement": "test-loader prohibition/final-evaluation-once enforcement", "path": null, "status": "implementation control required"},
+    {"requirement": "atomic checkpoint/resume semantics", "path": null, "status": "implementation control required"},
+    {"requirement": "non-finite/hash/missing-condition failure semantics", "path": null, "status": "implementation control required"}
+  ],
+  "decision": {
+    "runner_implementation": "BLOCKED",
+    "smoke_run": "NOT_STARTED",
+    "final_test_evaluation": "NOT_STARTED",
+    "reason": "AI-G2S-P1.0 does not specify several scientific values required to construct a reproducible benchmark. Selecting them in AI-G2S-R1 would alter the protocol.",
+    "required_next_protocol": "AI-G2S-P1.1"
+  }
+}

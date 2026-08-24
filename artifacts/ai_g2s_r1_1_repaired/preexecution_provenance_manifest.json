@@ -1,0 +1,28 @@
+{
+  "format": "FERMiON-AI-G2S-P1.1-detached-provenance-v2",
+  "protocol": {
+    "p10_raw_sha256": "8F458D3CA9822897A7FBB7FF92314E312B37E9DF11E113E102D58DF71EACB8AD",
+    "p11_raw_sha256": "BBDAB6671494069BBA94D9E2D0382D9A91896C634BEB83A315E7936FC961B03C",
+    "coverage_audit_raw_sha256": "F31B3F0D10C894DD02FD3FCB5FBE010CAE441561979C91B651DBD974C10AAA16"
+  },
+  "implementation": {
+    "runner_and_finalizer": {"path": "fermion/ai_g1/ai_g2s_r1.py", "raw_sha256": "6E295F69968C373A783B16D45518C0A4687C96D9A2DB11084BEBDAFB9DDB635E"},
+    "detached_launcher": {"path": "scripts/launch_ai_g2s_p1_1.ps1", "raw_sha256": "AEC8091FBECF6A99AF097BC76B222A21E0F3FB1DF5EFF52B0B01C0A42F7E5447"},
+    "tests": {"path": "tests/test_ai_g2s_r1.py", "raw_sha256": "863F82315ACA7CD778521C2BF472FD8EF1CF83FD1063938DADD750BC7D2F6735"}
+  },
+  "source_manifest": {
+    "path": "artifacts/ai_g2s_r1_1_repaired/source_manifest.json",
+    "raw_sha256": "5920FE278132D5DBCCD4DBB4F93232F7A420C8B497CA9E2358D0E7FDFED23C8D",
+    "tree_sha256": "BB07DE89583D7C26623893489766BE51881DEE6315B161998905F1081E1D30CD",
+    "verification": "raw manifest hash, exact fixed source set, every entry raw hash, and canonical tree hash"
+  },
+  "preexecution_artifacts": {
+    "environment": {"path": "artifacts/ai_g2s_r1_1_repaired/environment.json", "raw_sha256": "8EBD60390A6A3902D9E9344847ECAD84B6AF557AA98BEF0EC4FC2AFD94689109"},
+    "calibration_smoke": {"path": "artifacts/ai_g2s_r1_1_repaired/calibration_smoke_final_impl.json", "raw_sha256": "20EF9BE86A3C17C5D06ECDB839655115D54E96B6A208998F7E10BE7C8AAD47E2", "test_data_accessed": false},
+    "regression": {"path": "artifacts/ai_g2s_r1_1_repaired/regression.json", "raw_sha256": "346B11E6E72BEBD6AC8E61F6F47C7055EB52D18013107C77218E30C5FE28D319", "result": "229 passed, 1 deselected"},
+    "readiness_audit": {"path": "artifacts/ai_g2s_r1_1_repaired/launch_readiness_audit.json", "raw_sha256": "851B2CBB2327EBD3F16B4CE6A39F8464FF79D9C983D9769D6025E77339D5348F"}
+  },
+  "frozen_reference": {"path": "fermion/hr/reference_193.py", "raw_sha256": "8F544FCE6F0E7A03D52A9CBC46B366D0B9F82404B952CF479126CCA9D1EEF953"},
+  "git": {"git_head": null, "git_state": "repository_not_initialized"},
+  "scientific_status": {"full_paired_execution": "GATED", "final_test_predictions": "NONE", "spectral_utility": "UNEARNED"}
+}

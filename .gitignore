@@ -1,0 +1,6 @@
+.venv/
+.fermion/
+__pycache__/
+*.py[cod]
+fermion.local.json
+

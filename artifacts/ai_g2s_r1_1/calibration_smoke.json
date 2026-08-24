@@ -1,0 +1,219 @@
+{
+  "conditions": [
+    {
+      "condition_id": "elliptic_poisson_darcy:spectral:0",
+      "examples": 2,
+      "loss": 0.0064046611078083515,
+      "parameter_count": 524302,
+      "steps": 2
+    },
+    {
+      "condition_id": "elliptic_poisson_darcy:spectral_ablation:0",
+      "examples": 2,
+      "loss": 0.006405916530638933,
+      "parameter_count": 524301,
+      "steps": 2
+    },
+    {
+      "condition_id": "elliptic_poisson_darcy:mlp_shared_point_patch:0",
+      "examples": 2,
+      "loss": 0.049341682344675064,
+      "parameter_count": 524577,
+      "steps": 2
+    },
+    {
+      "condition_id": "elliptic_poisson_darcy:transformer_patch_sinusoidal:0",
+      "examples": 2,
+      "loss": 0.1757044494152069,
+      "parameter_count": 529688,
+      "steps": 2
+    },
+    {
+      "condition_id": "elliptic_poisson_darcy:fully_convolutional_cnn:0",
+      "examples": 2,
+      "loss": 0.020052574574947357,
+      "parameter_count": 531861,
+      "steps": 2
+    },
+    {
+      "condition_id": "elliptic_poisson_darcy:fourier_neural_operator:0",
+      "examples": 2,
+      "loss": 0.049341682344675064,
+      "parameter_count": 524577,
+      "steps": 2
+    },
+    {
+      "condition_id": "cross_resolution_fields:spectral:0",
+      "examples": 2,
+      "loss": 0.1523163765668869,
+      "parameter_count": 524204,
+      "steps": 2
+    },
+    {
+      "condition_id": "cross_resolution_fields:spectral_ablation:0",
+      "examples": 2,
+      "loss": 0.15237268805503845,
+      "parameter_count": 524203,
+      "steps": 2
+    },
+    {
+      "condition_id": "cross_resolution_fields:mlp_shared_point_patch:0",
+      "examples": 2,
+      "loss": 0.6961382031440735,
+      "parameter_count": 524473,
+      "steps": 2
+    },
+    {
+      "condition_id": "cross_resolution_fields:transformer_patch_sinusoidal:0",
+      "examples": 2,
+      "loss": 0.7822843194007874,
+      "parameter_count": 528024,
+      "steps": 2
+    },
+    {
+      "condition_id": "cross_resolution_fields:fully_convolutional_cnn:0",
+      "examples": 2,
+      "loss": 0.3321725130081177,
+      "parameter_count": 531546,
+      "steps": 2
+    },
+    {
+      "condition_id": "cross_resolution_fields:fourier_neural_operator:0",
+      "examples": 2,
+      "loss": 0.6961382031440735,
+      "parameter_count": 524473,
+      "steps": 2
+    },
+    {
+      "condition_id": "multiscale_forecasting:spectral:0",
+      "examples": 2,
+      "loss": 2.0283305644989014,
+      "parameter_count": 524598,
+      "steps": 2
+    },
+    {
+      "condition_id": "multiscale_forecasting:spectral_ablation:0",
+      "examples": 2,
+      "loss": 2.0283782482147217,
+      "parameter_count": 524597,
+      "steps": 2
+    },
+    {
+      "condition_id": "multiscale_forecasting:mlp_shared_point_patch:0",
+      "examples": 2,
+      "loss": 2.0519909858703613,
+      "parameter_count": 524891,
+      "steps": 2
+    },
+    {
+      "condition_id": "multiscale_forecasting:transformer_patch_sinusoidal:0",
+      "examples": 2,
+      "loss": 1.909838080406189,
+      "parameter_count": 527188,
+      "steps": 2
+    },
+    {
+      "condition_id": "multiscale_forecasting:fully_convolutional_cnn:0",
+      "examples": 2,
+      "loss": 1.963812232017517,
+      "parameter_count": 522423,
+      "steps": 2
+    },
+    {
+      "condition_id": "multiscale_forecasting:fourier_neural_operator:0",
+      "examples": 2,
+      "loss": 2.0519909858703613,
+      "parameter_count": 524891,
+      "steps": 2
+    },
+    {
+      "condition_id": "coordinate_permutation:spectral:0",
+      "examples": 2,
+      "loss": 0.061654046177864075,
+      "parameter_count": 524302,
+      "steps": 2
+    },
+    {
+      "condition_id": "coordinate_permutation:spectral_ablation:0",
+      "examples": 2,
+      "loss": 0.06168963015079498,
+      "parameter_count": 524301,
+      "steps": 2
+    },
+    {
+      "condition_id": "coordinate_permutation:mlp_shared_point_patch:0",
+      "examples": 2,
+      "loss": 0.04881207272410393,
+      "parameter_count": 524577,
+      "steps": 2
+    },
+    {
+      "condition_id": "coordinate_permutation:transformer_patch_sinusoidal:0",
+      "examples": 2,
+      "loss": 0.19774574041366577,
+      "parameter_count": 529688,
+      "steps": 2
+    },
+    {
+      "condition_id": "coordinate_permutation:fully_convolutional_cnn:0",
+      "examples": 2,
+      "loss": 0.04640669748187065,
+      "parameter_count": 531861,
+      "steps": 2
+    },
+    {
+      "condition_id": "coordinate_permutation:fourier_neural_operator:0",
+      "examples": 2,
+      "loss": 0.04881207272410393,
+      "parameter_count": 524577,
+      "steps": 2
+    },
+    {
+      "condition_id": "tabular_control:spectral:0",
+      "examples": 2,
+      "loss": 0.7684035301208496,
+      "parameter_count": 524204,
+      "steps": 2
+    },
+    {
+      "condition_id": "tabular_control:spectral_ablation:0",
+      "examples": 2,
+      "loss": 0.7685257196426392,
+      "parameter_count": 524203,
+      "steps": 2
+    },
+    {
+      "condition_id": "tabular_control:mlp_shared_point_patch:0",
+      "examples": 2,
+      "loss": 1.4834704399108887,
+      "parameter_count": 524473,
+      "steps": 2
+    },
+    {
+      "condition_id": "tabular_control:transformer_patch_sinusoidal:0",
+      "examples": 2,
+      "loss": 0.8960840106010437,
+      "parameter_count": 528024,
+      "steps": 2
+    },
+    {
+      "condition_id": "tabular_control:fully_convolutional_cnn:0",
+      "examples": 2,
+      "loss": 1.337847352027893,
+      "parameter_count": 531546,
+      "steps": 2
+    },
+    {
+      "condition_id": "tabular_control:fourier_neural_operator:0",
+      "examples": 2,
+      "loss": 1.4834704399108887,
+      "parameter_count": 524473,
+      "steps": 2
+    }
+  ],
+  "label": "non_scientific_smoke",
+  "spectral_utility_verdict": null,
+  "split": "calibration",
+  "test_data_accessed": false,
+  "training_seed": 0
+}

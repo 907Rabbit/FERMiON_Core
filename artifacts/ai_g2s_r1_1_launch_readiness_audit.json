@@ -1,0 +1,62 @@
+{
+  "format": "FERMiON-AI-G2S-launch-readiness-audit-v1",
+  "protocol_id": "AI-G2S-P1.1",
+  "runner": {
+    "path": "fermion/ai_g1/ai_g2s_r1.py",
+    "sha256": "B2EAF070632BF08735742C64D9D4AF8855DF75B1B9188506D4636C831DE599F2"
+  },
+  "status": "BLOCKED_IMPLEMENTATION_INCOMPLETE",
+  "final_test_access": "none_by_this_audit",
+  "confirmed_implemented": [
+    "P1.0 and P1.1 startup hash verification",
+    "deterministic split generation",
+    "validation-before-test access gate",
+    "atomic validation checkpoint write",
+    "per-realization final-loss rows",
+    "explicit non-finite loss failure",
+    "gated full-run entry point",
+    "deterministic-algorithms activation at full-runner construction"
+  ],
+  "blocking_missing_requirements": [
+    {
+      "requirement": "frozen 200-step warm-up and cosine learning-rate schedule",
+      "evidence": "select_on_validation constructs AdamW but no scheduler and does not apply a learning-rate schedule"
+    },
+    {
+      "requirement": "identity-safe resume from atomic checkpoints",
+      "evidence": "select_on_validation always creates a new model/optimizer and does not load or validate a resumable training-state checkpoint"
+    },
+    {
+      "requirement": "cross-resolution final evaluation at 32^2, 64^2, and 128^2 with a 64^2/128^2 primary loss",
+      "evidence": "cross_resolution_fields generator and evaluator only render/evaluate 32^2 tensors"
+    },
+    {
+      "requirement": "all final-test endpoints required before finalization",
+      "evidence": "write_final_artifacts accepts arbitrary rows and finalizes without endpoint-completeness validation"
+    },
+    {
+      "requirement": "10,000-resample deterministic paired hierarchical bootstrap before finalization",
+      "evidence": "deterministic_hierarchical_bootstrap exists but FullPairedRunner.run and write_final_artifacts never call it"
+    },
+    {
+      "requirement": "frequency-resolved and collapse diagnostics in final artifacts",
+      "evidence": "parseval_audit and radial_frequency_bins exist as isolated helpers but no final-run path records their outputs, transfer function, activation/residual ratio, gate values, or gradient norms"
+    },
+    {
+      "requirement": "source-hash verification during the complete run",
+      "evidence": "the full runner verifies frozen configuration hashes at construction but does not verify the frozen source/provenance manifest before final-test access"
+    }
+  ],
+  "required_before_launch_authorization": [
+    "implement and test every listed missing requirement",
+    "regenerate final-implementation calibration-only smoke",
+    "regenerate source and environment manifests",
+    "run the full non-UI regression suite",
+    "create a detached provenance manifest and separately hashed launch record"
+  ],
+  "scientific_status": {
+    "full_paired_execution": "GATED",
+    "final_test_predictions": "NONE_GENERATED_BY_THIS_AUDIT",
+    "spectral_utility": "UNEARNED"
+  }
+}
