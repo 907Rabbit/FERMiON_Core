@@ -1,0 +1,43 @@
+{
+  "schema_version": "fermion-cp10-provenance-recovery-v1",
+  "status": "PROVISIONAL_NOT_FROZEN",
+  "implementation_authorized": false,
+  "execution_authorized": false,
+  "scientific_verdict": "UNEARNED",
+  "created_utc": "2026-08-25T02:00:00Z",
+  "search": {
+    "requested_terms": ["geometry_gaussian_ensemble_gate.py", "gaussian_ensemble_results.json", "gaussian_ensemble_summary.csv", "CP10", "CP11", "geometry-information", "covariant-log", "rho_g", "Phi", "Omega", "Psi", "projection penalty", "semi-implicit Fourier", "Model-B"],
+    "scoped_roots": ["G:\\MyAIproject", "G:\\FERMiON", "G:\\AI2", "G:\\Physics Engine"],
+    "method": "read-only filename scans and bounded text inspection; no candidate was copied or executed",
+    "limitations": ["A broad recursive cross-project filename scan exceeded the interactive observation window and was not interpreted as a negative result.", "The recorded inventory contains inspected candidates only; it is not a claim that every byte on G: was exhaustively searched."]
+  },
+  "git_identities": {
+    "G:\\MyAIproject": {"repository": true, "head": "9945aa86650e3b9ff4d72503f9aba0b762be02d2", "path_state": "artifacts are untracked in the current baseline"},
+    "G:\\FERMiON": {"repository": false, "head": null},
+    "G:\\AI2": {"repository": false, "head": null},
+    "G:\\Physics Engine": {"repository": false, "head": null}
+  },
+  "recovery_conclusion": {
+    "complete_authoritative_cp10_bundle_recovered": false,
+    "geometry_gaussian_ensemble_gate_recovered": false,
+    "gaussian_ensemble_results_recovered": false,
+    "gaussian_ensemble_summary_recovered": false,
+    "statement": "No complete authoritative CP10/CP11 bundle, executable CP10 gate, or CP10 result artifact was recovered. Generic external variational material is not promoted into active source or scientific evidence."
+  },
+  "candidates": [
+    {"path":"G:\\MyAIproject\\artifacts\\scientific_gate_registry.json","size_bytes":3020,"modified_utc":"2026-08-24T10:00:56.3107538Z","sha256":"9D6FE2953D4FA78C2EE0D260F82C88C173E185C4659D4486F7D81C1AF92727F8","git_identity":"9945aa86650e3b9ff4d72503f9aba0b762be02d2; untracked artifact","completeness":"declares CP10 and CP11 as unimplemented; contains no protocol or results","classification":"AUTHORITATIVE_STATUS_ONLY"},
+    {"path":"G:\\MyAIproject\\artifacts\\fermion_integration_bootstrap.md","size_bytes":18120,"modified_utc":"2026-08-24T09:52:47.9034363Z","sha256":"E7C8D789688F67D05BEC70A0594CADDFAB4AE162D0FEC3D6BC5180EF6B017C7D","git_identity":"9945aa86650e3b9ff4d72503f9aba0b762be02d2; untracked artifact","completeness":"Phase-1 audit says no CP10/CP11-named code gate was found","classification":"PROVISIONAL_AUDIT"},
+    {"path":"G:\\MyAIproject\\fermion\\ai_g1\\ai_g2.py","size_bytes":11203,"modified_utc":"2026-08-23T06:09:57.3824935Z","sha256":"98607AEB2612A7724743F28DED96EA43E9A74C79984E250D08C391671C77EA98","git_identity":"9945aa86650e3b9ff4d72503f9aba0b762be02d2; tracked source","completeness":"Explicitly independent of CP10/CP11; no matter-coupling gate","classification":"UNRELATED"},
+    {"path":"G:\\FERMiON\\fermion_symplectic_dysib.py","size_bytes":21362,"modified_utc":"2026-08-03T03:31:53.4404628Z","sha256":"6B29E466DA1F20C6B3616262E636388A4A38D4600CE95B901CA045DE39ABA84D","git_identity":"NO_GIT_REPOSITORY","completeness":"Uses Omega as a symplectic coordinate; no CP10 action, Phi field, or Gaussian ensemble gate","classification":"UNRELATED"},
+    {"path":"G:\\AI2\\FermionNN3D.py","size_bytes":6357,"modified_utc":"2026-03-02T04:47:24.4378541Z","sha256":"435329EB719940C5E12FF775C82C250309FB0E8C06ABC3514BB96867D7500FFD","git_identity":"NO_GIT_REPOSITORY","completeness":"Legacy Psi-named neural code; no CP10 contract or reproducible CP10 artifact","classification":"STALE"},
+    {"path":"G:\\AI2\\psi_action_layer.py","size_bytes":1212,"modified_utc":"2026-03-02T10:48:28.4232371Z","sha256":"5B9241CB972A605221C3EFB8939A5C16C05221FE72C2C46275DA20C7476B2934","git_identity":"NO_GIT_REPOSITORY","completeness":"Legacy Psi-named action helper; no CP10 provenance or gate","classification":"STALE"},
+    {"path":"G:\\Physics Engine\\field_lab.gd","size_bytes":14559,"modified_utc":"2026-08-04T08:43:46.4494863Z","sha256":"C3BF258A35E3CD591CC06D3AA6A56E52200AB8034B08B08D5A9BB55DD20E3862","git_identity":"NO_GIT_REPOSITORY","completeness":"Godot field-lab application; no recovered CP10 gate bundle","classification":"UNRELATED"},
+    {"path":"G:\\Physics Engine\\philang-physics-pack\\psilang\\assets\\examples\\coupled_fields.psi","size_bytes":877,"modified_utc":"2026-08-04T08:29:33.0000000Z","sha256":"8D3E40DD37393D48DEABE329A93738F889FF5508A1C131F4D17B8425E6DDAA97","git_identity":"NO_GIT_REPOSITORY","completeness":"Generic two-scalar mixed-flow example; different interaction (+ coupling phi^2 psi^2), 8^3 grid, no CP10 provenance","classification":"PROVISIONAL_REFERENCE"},
+    {"path":"G:\\Physics Engine\\philang-physics-pack\\psilang\\assets\\examples\\semi_implicit_ch.psi","size_bytes":542,"modified_utc":"2026-08-04T08:29:33.0000000Z","sha256":"8B01ABBDE034571EA0AC1DA8B14E0DAE1A955CA69BFA7C1D7D847A420D82D93C","git_identity":"NO_GIT_REPOSITORY","completeness":"Generic periodic semi-implicit conserved-flow example; no CP10 coupling or results","classification":"PROVISIONAL_REFERENCE"},
+    {"path":"G:\\Physics Engine\\philang-physics-pack\\psilang\\assets\\examples\\block_semi_implicit.psi","size_bytes":1051,"modified_utc":"2026-08-04T08:29:32.0000000Z","sha256":"6B8968DF8AC0ABE89CEA686FCF5D0168E927D49E3F5ACFF905BE29BE1A182087","git_identity":"NO_GIT_REPOSITORY","completeness":"Generic block semi-implicit example; no CP10 action or acceptance logic","classification":"PROVISIONAL_REFERENCE"},
+    {"path":"G:\\Physics Engine\\philang-physics-pack\\variational\\references\\flow-and-metric-contract.md","size_bytes":3063,"modified_utc":"2026-08-04T08:29:49.0000000Z","sha256":"F7AEF051E3615B3419F2A5457E5D43DED383DFC33AAE4D5C5C2751D75DFE0D9A","git_identity":"NO_GIT_REPOSITORY","completeness":"Generic Model-A/Model-B flow and boundary guidance; no CP10-specific evidence","classification":"PROVISIONAL_REFERENCE"},
+    {"path":"G:\\Physics Engine\\philang-physics-pack\\variational\\references\\numerical-integrators.md","size_bytes":2567,"modified_utc":"2026-08-04T08:29:50.0000000Z","sha256":"CDE041C3E9EF717107CDADE670C9315F79DC56A562E233B3F148E2718C9F2FF6","git_identity":"NO_GIT_REPOSITORY","completeness":"Generic FFT and block-integrator constraints; no CP10 implementation","classification":"PROVISIONAL_REFERENCE"},
+    {"path":"G:\\Physics Engine\\philang-physics-pack\\variational\\references\\verification-and-oracles.md","size_bytes":2697,"modified_utc":"2026-08-04T08:29:51.0000000Z","sha256":"DDCAB25EC6E900903519A702196E31A5A775550707D9659BEF252EDB797E2AFD","git_identity":"NO_GIT_REPOSITORY","completeness":"Generic variational, conservation, and refinement audit guidance; no CP10 result","classification":"PROVISIONAL_REFERENCE"},
+    {"path":"G:\\Physics Engine\\philang-physics-pack\\variational\\references\\architecture-contract.md","size_bytes":4044,"modified_utc":"2026-08-04T08:29:48.0000000Z","sha256":"536BEAF58A9273068E2AE2A66721769DDEF21D5E941FD2B8CA6573DE68B32EE1","git_identity":"NO_GIT_REPOSITORY","completeness":"Generic architecture documentation; no CP10 contract or run provenance","classification":"PROVISIONAL_REFERENCE"}
+  ]
+}

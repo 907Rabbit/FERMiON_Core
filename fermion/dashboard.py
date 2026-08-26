@@ -102,8 +102,8 @@ class DashboardController:
 
     def control_plane(self):
         if self._control_plane is None:
-            from .control_plane import default_control_plane
-            self._control_plane = default_control_plane(self._temp_root() / "control-plane")
+            from .cognitive.runtime_bootstrap import shared_control_plane
+            self._control_plane = shared_control_plane(self.project_root)
         return self._control_plane
 
     def start(self, operation: str, *, live_confirmed: bool = False) -> DashboardJob:

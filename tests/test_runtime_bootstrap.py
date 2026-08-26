@@ -3,7 +3,8 @@ import json
 import pytest
 
 from fermion.cognitive.integration_registry import FirstPartyManifest, ProvenanceRegistry
-from fermion.cognitive.runtime_bootstrap import inspect_git_baseline, load_verified_runtime, verify_integration
+from fermion.cognitive.runtime_bootstrap import (inspect_git_baseline, integration_artifact_paths,
+                                                 load_verified_runtime, verify_integration)
 from fermion.cognitive.scientific_gates import ScientificGateRegistry
 
 
@@ -63,7 +64,25 @@ def test_bootstrap_rejects_tampered_provenance_chain(tmp_path):
                               control_runtime_root=tmp_path / "control")
 
 
+def test_integration_artifact_paths_follow_an_explicit_pointer(tmp_path):
+    root = tmp_path
+    (root / "artifacts").mkdir()
+    manifest = root / "artifacts" / "manifests"
+    manifest.mkdir()
+    target = manifest / "current.json"
+    gates = root / "artifacts" / "gates-v2.json"
+    target.write_text("{}\n")
+    gates.write_text("{}\n")
+    (root / "artifacts" / "integration_defaults.json").write_text(json.dumps({
+        "manifest": "artifacts/manifests/current.json",
+        "gates": "artifacts/gates-v2.json",
+    }))
+    resolved_manifest, resolved_gates = integration_artifact_paths(root)
+    assert resolved_manifest == target.resolve()
+    assert resolved_gates == gates.resolve()
+
+
 def test_git_baseline_inspection_never_conflates_a_nonrepository_with_a_frozen_baseline(tmp_path):
     baseline = inspect_git_baseline(tmp_path)
     assert baseline.status == "NO_GIT_BASELINE"
-    assert not baseline.committed and baseline.head is None and baseline.clean is None
+    assert not baseline.committed and baseline.head is None and baseline.tracked_clean is None

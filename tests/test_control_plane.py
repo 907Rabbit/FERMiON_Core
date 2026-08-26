@@ -73,6 +73,8 @@ def test_control_plane_manifest_includes_current_registered_adapter_state(tmp_pa
     plane = default_control_plane(tmp_path)
     manifest = plane.manifest()
     assert "notepad_sandbox" in manifest and "coding_sandbox" in manifest and "self_evolver" in manifest and "nmap_reports" in manifest and "local_programs" in manifest
+    assert "llama_runtime" in manifest and "fermion_science" in manifest and "vendor_inventory" in manifest
+    assert "ciphey" in manifest and "bettercap" in manifest and "codex" in manifest
     assert "current_state" in manifest["local_programs"]
     assert "C:" in manifest["notepad_sandbox"]["description"]
     assert "No run" in manifest["coding_sandbox"]["description"]

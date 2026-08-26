@@ -1,0 +1,33 @@
+{
+  "schema_version": "fermion-cp10-r1-readiness-v1",
+  "protocol_id": "CP10-P0.7",
+  "implementation_status": "BLOCKED",
+  "scientific_verdict": "UNEARNED",
+  "implementation_authorized": true,
+  "execution_authorized": false,
+  "frozen_bundle_hashes_verified": true,
+  "requirements": [
+    {
+      "requirement": "Padded-product direct-convolution startup oracle",
+      "status": "BLOCKED",
+      "evidence": "The frozen contract requires fixed sparse trigonometric inputs for Phi^2, Phi^3, Phi*psi, and Phi*(Phi^2-v^2), but does not freeze their modal indices, amplitudes, phases, or v value.",
+      "impact": "Choosing those values would create a new numerical test protocol and violate the instruction not to resolve scientific/numerical ambiguity silently."
+    },
+    {
+      "requirement": "Variational finite-difference startup audit",
+      "status": "BLOCKED",
+      "evidence": "The frozen contract sets only a mismatch threshold; it does not freeze a field, perturbation direction, central-difference step, or aggregation norm.",
+      "impact": "An implementation would have to choose the audit inputs and epsilon, changing the frozen test definition."
+    },
+    {
+      "requirement": "Core PDE, FFT, IMEX, Philox, condition, seed, and bootstrap definitions",
+      "status": "PASS",
+      "evidence": "The frozen P0.7 bundle supplies equations, retained modes, scaling, Philox literals, condition set, and bootstrap artifact hashes."
+    }
+  ],
+  "prohibited_actions_not_taken": [
+    "No fermion/cp10 source package created.",
+    "No solver, calibration smoke, held-out seed request, bootstrap materialization, finalizer, Git operation, commit, promotion, or CP11 action performed."
+  ],
+  "smallest_unblocking_action": "Create a new explicitly authorized protocol correction that freezes the sparse oracle field definitions and the finite-difference audit field, direction, epsilon, and norm; then re-freeze that corrected protocol before implementation."
+}

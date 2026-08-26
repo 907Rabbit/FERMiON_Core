@@ -1,6 +1,19 @@
 .venv/
 .fermion/
+.fermion_cognitive/
+.fermion_control/
 __pycache__/
 *.py[cod]
 fermion.local.json
+.pytest-*/
+logs/
+tools/llama.cpp/
+fermion/bettercap/
+fermion/Ciphey/
+fermion/CL4R1T4S/
+fermion/codex/
+fermion/GhostTrack/
+fermion/hackingtool/
+fermion/spiderfoot/
+fermion/the-book-of-secret-knowledge/
 

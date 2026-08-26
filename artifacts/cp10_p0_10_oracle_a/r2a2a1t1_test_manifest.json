@@ -1,0 +1,1 @@
+{"collected_count":103,"command":"python -m pytest -q -p no:cacheprovider tests/test_cp10_oracle_a_runspec_p0_10.py tests/test_cp10_oracle_a_p0_10.py","duration_seconds":4.91,"exit_code":0,"failed_count":0,"passed_count":103}

@@ -9,13 +9,11 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 import uuid
 
+from fermion.source_exclusions import EXCLUDED_DIRECTORY_NAMES
+
 
 SCHEMA_VERSION = "fermion-integration-provenance-v1"
 DEFAULT_SOURCE_PATHS = ("fermion", "configs", "scripts", "pyproject.toml")
-EXCLUDED_DIRECTORY_NAMES = frozenset({
-    ".git", "__pycache__", "bettercap", "Ciphey", "CL4R1T4S", "codex", "GhostTrack",
-    "hackingtool", "spiderfoot", "the-book-of-secret-knowledge",
-})
 FIRST_PARTY_SUFFIXES = frozenset({".json", ".ps1", ".py", ".toml"})
 
 

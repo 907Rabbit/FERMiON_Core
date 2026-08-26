@@ -1,0 +1,1 @@
+{"command":"python -m pytest -q -p no:cacheprovider tests/test_cp10_oracle_a_runspec_p0_10.py tests/test_cp10_oracle_a_launch_payload_p0_10.py","exit_code":0,"frozen_trajectories":0,"passed_count":121}

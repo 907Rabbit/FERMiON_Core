@@ -1,0 +1,1 @@
+{"artifact_type":"CP10-R1 smoke attempts","attempts":[{"command":"python -m fermion.cp10.runner smoke --allow-calibration-smoke","held_out_access_count":0,"requested_seeds":[1],"result":"PASS"}],"scientific_use":false}

@@ -1,0 +1,26 @@
+{
+  "schema_version": "fermion-test-receipt-v1",
+  "command": [
+    "G:\\MyAIproject\\.venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--basetemp",
+    ".pytest-integration-checkpoint",
+    "tests\\test_runtime_bootstrap.py",
+    "tests\\test_ai_g2s_provenance.py",
+    "tests\\test_test_receipt.py"
+  ],
+  "working_directory": "G:\\MyAIproject",
+  "started_at_utc": "2026-08-25T02:32:37.705357+00:00",
+  "completed_at_utc": "2026-08-25T02:32:43.172730+00:00",
+  "elapsed_seconds": 5.467373,
+  "exit_code": 0,
+  "stdout_path": "G:\\MyAIproject\\artifacts\\verification\\integration_checkpoint_tests.stdout.log",
+  "stdout_sha256": "FC1DDEB750C6DF40E76244E52DE4625A2C90EF7E8497629D3FD78A4829D436ED",
+  "stderr_path": "G:\\MyAIproject\\artifacts\\verification\\integration_checkpoint_tests.stderr.log",
+  "stderr_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+  "succeeded": true
+}

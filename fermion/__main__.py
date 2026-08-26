@@ -48,12 +48,27 @@ def main() -> None:
     integration_verify = commands.add_parser("integration-verify", help="verify manifest, scientific gates, and provenance without executing actions")
     integration_verify.add_argument("--manifest", required=True, help="path to an immutable first-party manifest")
     integration_verify.add_argument("--gates", required=True, help="path to an immutable scientific-gate registry")
+    ai_g2s_verify = commands.add_parser("ai-g2s-verify", help="verify the AI-G2S P1.1 source/config bundle without running it")
+    ai_g2s_verify.add_argument("--source-manifest", required=True, help="path to the AI-G2S P1.1 source manifest")
+    ai_g2s_verify.add_argument("--detached-provenance", help="optional detached P1.1 provenance envelope")
+    test_receipt = commands.add_parser("test-receipt", help="run pytest with an isolated basetemp and save an auditable receipt")
+    test_receipt.add_argument("--receipt", required=True, help="JSON receipt path; stdout/stderr sidecars share its stem")
+    test_receipt.add_argument("pytest_args", nargs=argparse.REMAINDER,
+                              help="pytest arguments; an explicit --basetemp is required")
+    test_receipt_verify = commands.add_parser("test-receipt-verify", help="verify a completed test receipt and logs without rerunning tests")
+    test_receipt_verify.add_argument("--receipt", required=True, help="JSON receipt path to verify")
     self_evolver = commands.add_parser("self-evolver", help="run the constrained, auditable strategy evolver")
     self_evolver.add_argument("--workspace", help="runtime directory for generated strategies and audit records")
     self_evolver.add_argument("args", nargs=argparse.REMAINDER,
                               help="arguments after this command belong to the self-evolver")
     chat = commands.add_parser("chat", help="start the persistent FERMiON cognitive CLI")
     chat.add_argument("--once", help="process one message and exit")
+    bridge = commands.add_parser("bridge", help="validate a FERMiON control-plane plan; execute only with --approve")
+    bridge.add_argument("plan", nargs="?", help="JSON or fermion_plan markup; stdin if omitted")
+    bridge.add_argument("--approve", action="store_true")
+    cp10 = commands.add_parser("cp10", help="verify frozen CP10 bundles; full execution remains gated")
+    cp10.add_argument("action", choices=("verify", "smoke"))
+    cp10.add_argument("--allow-calibration-smoke", action="store_true")
     cognition = commands.add_parser("cognition", help="print calculated functional cognitive-access metrics")
     cognition.add_argument("--json", action="store_true")
     models = commands.add_parser("models", help="discover local GGUF models without downloading anything")
@@ -73,13 +88,21 @@ def main() -> None:
                 print(json.dumps({"energy": result.energy, "cognition": result.cognition, "provenance": result.provenance, "generation_status": result.generation_status, "timing": result.timing}, indent=2))
         if args.once:
             emit(args.once); return
-        print("FERMiON local cognitive CLI. Commands: /cognition, /route last, /capabilities, /capability ID, /capability gaps, /self audit, /llm last, /evidence last, /calculation last, /calculation verify ID, /memory verify KEY, /execution verify ID, /checkpoint save NAME, /checkpoint load NAME, /quit")
+        print("FERMiON local cognitive CLI. Commands: /cognition, /route last, /apps, /plan last, /bridge [approve] JSON, /capabilities, /capability ID, /capability gaps, /self audit, /llm last, /evidence last, /calculation last, /calculation verify ID, /memory verify KEY, /execution verify ID, /checkpoint save NAME, /checkpoint load NAME, /quit")
         while True:
             try: message = input("You > ").strip()
             except (EOFError, KeyboardInterrupt): print(); break
             if not message: continue
             if message in ("/quit", "/exit"): break
             parts = message.split()
+            if message == "/apps": print(json.dumps({"integration_status": runtime.integration_status, "apps": runtime.apps_manifest()}, indent=2, default=str)); continue
+            if message == "/plan last": print(json.dumps(runtime.last_plan or "NO_PLAN", indent=2, default=str)); continue
+            if parts and parts[0] == "/bridge":
+                approve = len(parts) > 1 and parts[1] == "approve"
+                payload = " ".join(parts[2:] if approve else parts[1:])
+                if not payload:
+                    print(json.dumps({"error": "paste a JSON or fermion_plan payload after /bridge"}, indent=2)); continue
+                print(json.dumps(runtime.submit_bridge(payload, approved=approve), indent=2, default=str)); continue
             if message == "/cognition": print(json.dumps(runtime.cognition(), indent=2)); continue
             if message == "/llm last": print(json.dumps(runtime.last_llm_status(), indent=2)); continue
             if message == "/route last": print(json.dumps(runtime.last_route_status() or "NO_ROUTE", indent=2)); continue
@@ -155,8 +178,39 @@ def main() -> None:
                           "scientific_gates": {gate.gate_id: gate.state for gate in gates.gates},
                           "provenance_records": len(provenance.records()),
                           "git_baseline": asdict(baseline),
-                          "verification": "VERIFIED" if baseline.committed and baseline.clean
+                          "verification": "VERIFIED" if baseline.committed and baseline.tracked_clean and not baseline.untracked_count
+                          else "VERIFIED_ARTIFACTS_COMMITTED_BASELINE_WITH_UNTRACKED_STATE"
+                          if baseline.committed and baseline.tracked_clean
                           else "VERIFIED_ARTIFACTS_GIT_BASELINE_INCOMPLETE"}, indent=2))
+    elif args.command == "ai-g2s-verify":
+        from .ai_g1.ai_g2s_provenance import verify_detached_preexecution_provenance, verify_preexecution_source_manifest
+        result = verify_preexecution_source_manifest(root=Path.cwd(), manifest_path=Path(args.source_manifest))
+        if args.detached_provenance:
+            result["detached"] = verify_detached_preexecution_provenance(root=Path.cwd(), provenance_path=Path(args.detached_provenance))
+        print(json.dumps(result, indent=2))
+    elif args.command == "test-receipt":
+        from .cognitive.test_receipt import run_pytest_with_receipt
+        pytest_args = args.pytest_args[1:] if args.pytest_args[:1] == ["--"] else args.pytest_args
+        receipt = run_pytest_with_receipt(root=Path.cwd(), receipt_path=Path(args.receipt), pytest_args=pytest_args)
+        print(json.dumps(receipt.to_dict(), indent=2))
+    elif args.command == "test-receipt-verify":
+        from .cognitive.test_receipt import verify_test_receipt
+        print(json.dumps(verify_test_receipt(Path(args.receipt)).to_dict(), indent=2))
+    elif args.command == "bridge":
+        from .cognitive.runtime import CognitiveRuntime, RuntimeConfig
+        payload = args.plan if args.plan else sys.stdin.read()
+        print(json.dumps(CognitiveRuntime(RuntimeConfig(root=Path.cwd(), model_path=args.model,
+                                                        disabled=args.disable_cognition)).submit_bridge(
+            payload, approved=args.approve), indent=2, default=str))
+    elif args.command == "cp10":
+        if args.action == "verify":
+            from .cp10.oracle_a_launcher_p0_10 import verify
+            print(json.dumps(verify(Path.cwd()), indent=2, sort_keys=True))
+        else:
+            from .cp10.runner import smoke
+            if not args.allow_calibration_smoke:
+                raise SystemExit("smoke requires --allow-calibration-smoke")
+            print(json.dumps(smoke(str(Path.cwd())), indent=2, sort_keys=True))
     elif args.command == "self-evolver":
         from .safe_self_evolver import main as self_evolver_main
         self_evolver_args = (["--workspace", args.workspace] if args.workspace else []) + args.args

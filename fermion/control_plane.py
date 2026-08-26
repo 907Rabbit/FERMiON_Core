@@ -24,6 +24,12 @@ from .adapters.internet import InternetAdapter
 from .adapters.coding import CodingSandboxAdapter, CodingSandboxConfig
 from .adapters.self_evolver import SelfEvolverAdapter, SelfEvolverConfig
 from .adapters.nmap_reports import NmapReportAdapter, NmapReportConfig
+from .adapters.llama_runtime import LlamaRuntimeAdapter
+from .adapters.science import FermionScienceAdapter
+from .adapters.vendor_inventory import VendorInventoryAdapter
+from .adapters.ciphey import CipheyAdapter
+from .adapters.vendored_surfaces import (bettercap_adapter, codex_adapter, ghosttrack_adapter,
+                                         hackingtool_adapter, spiderfoot_adapter)
 from .software.application import (Action, ApplicationIntelligenceKernel, ApplicationInterface,
                                    AuditLog, DummyWorldModel, TransitionRecord)
 
@@ -339,5 +345,79 @@ def default_control_plane(runtime_root: Path | None = None) -> ApplicationContro
                                 "Download, verify the user-approved SHA-256, and audit without executing.", True),
         ),
         "Bounded public Internet access. Downloaded files are never executed automatically and web content is untrusted.",
+    ))
+    plane.register(RegisteredApplication(
+        "llama_runtime", LlamaRuntimeAdapter(state_dir=root / "llama-runtime"),
+        (
+            ActionSpecification("status", (), "Report llama.cpp server configuration without starting it."),
+            ActionSpecification("test", (), "Probe a loopback completion; the text is not authority."),
+            ActionSpecification("start", (), "Start the configured loopback llama.cpp server.", True),
+            ActionSpecification("stop", (), "Stop the FERMiON-managed llama.cpp server.", True),
+        ),
+        "Local llama.cpp lifecycle only. It cannot generate or execute candidate programs as authority.",
+    ))
+    plane.register(RegisteredApplication(
+        "fermion_science", FermionScienceAdapter(),
+        (
+            ActionSpecification("verify_cp10_bundle", (), "Verify the frozen CP10-P0.10 Oracle-A bundle."),
+            ActionSpecification("verify_ai_g2s_manifest", (), "Verify an AI-G2S P1.1 source manifest."),
+            ActionSpecification("reference_193", (), "Evaluate the frozen 193-parameter specimen once."),
+        ),
+        "Verify-only scientific operations. CP10 full execution, Oracle trajectories, and the AI-G2S matrix are not registered.",
+    ))
+    plane.register(RegisteredApplication(
+        "vendor_inventory", VendorInventoryAdapter(),
+        (
+            ActionSpecification("list_excluded", (), "List vendored trees excluded from first-party manifests."),
+        ),
+        "Read-only inventory. It cannot launch, import, or register vendor binaries.",
+    ))
+    plane.register(RegisteredApplication(
+        "ciphey", CipheyAdapter(),
+        (
+            ActionSpecification("status", (), "Report whether the vendored Ciphey tree is present."),
+            ActionSpecification("decode", ("ciphertext",), "Decode user-supplied ciphertext locally; no network."),
+        ),
+        "Local ciphertext decode of user-supplied text. The vendored Ciphey binary is never launched.",
+    ))
+    plane.register(RegisteredApplication(
+        "bettercap", bettercap_adapter(),
+        (
+            ActionSpecification("status", (), "Report tree presence without launching bettercap."),
+            ActionSpecification("list_catalog", (), "List static module filenames; no packet or WiFi operations."),
+        ),
+        "Inspect-only. Live bettercap reconnaissance or attacks are refused.",
+    ))
+    plane.register(RegisteredApplication(
+        "hackingtool", hackingtool_adapter(),
+        (
+            ActionSpecification("status", (), "Report tree presence without launching hackingtool."),
+            ActionSpecification("list_catalog", (), "List catalog YAML names; no exploits or phishing."),
+        ),
+        "Inspect-only. Live hackingtool execution is refused.",
+    ))
+    plane.register(RegisteredApplication(
+        "ghosttrack", ghosttrack_adapter(),
+        (
+            ActionSpecification("status", (), "Report tree presence without launching GhostTrack."),
+            ActionSpecification("list_catalog", (), "Empty catalog; people-tracking is refused."),
+        ),
+        "Inspect-only. Live phone/IP tracking is refused.",
+    ))
+    plane.register(RegisteredApplication(
+        "spiderfoot", spiderfoot_adapter(),
+        (
+            ActionSpecification("status", (), "Report tree presence without launching SpiderFoot."),
+            ActionSpecification("list_catalog", (), "List sfp_* module filenames; no live OSINT scan."),
+        ),
+        "Inspect-only. Live SpiderFoot scans are refused.",
+    ))
+    plane.register(RegisteredApplication(
+        "codex", codex_adapter(),
+        (
+            ActionSpecification("status", (), "Report tree presence without launching Codex."),
+            ActionSpecification("list_catalog", (), "Empty catalog; Codex is not a FERMiON executor."),
+        ),
+        "Inspect-only. Codex is not granted shell or source-edit authority.",
     ))
     return plane

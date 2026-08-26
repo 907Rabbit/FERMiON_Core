@@ -30,6 +30,10 @@ from .release_governance import ReleaseGovernor
 from .release_candidates import ReleaseCandidateService
 from .reproducibility import BundleService
 from .skills import discover_skills, retrieve_skills
+from .bounded_execution import run_prime_program, run_workspace_proof
+from .runtime_bootstrap import shared_control_plane, try_load_verified_runtime
+from .tool_bridge import ToolCallParseError, parse_qwen_bridge_plan
+from .integration_runtime import PerceptionEvent
 
 
 @dataclass
@@ -84,9 +88,28 @@ class CognitiveRuntime:
         self.last_route: dict[str, object] = {}
         self._active_route: ScientificRoute | None = None
         self.evidence_validator = EvidenceClaimValidator()
+        self.last_plan: dict[str, object] | None = None
+        bootstrapped = try_load_verified_runtime(self.config.root)
+        if bootstrapped is not None:
+            self.fermion_runtime = bootstrapped.runtime
+            self.control_plane = bootstrapped.runtime.control_plane
+            self.integration_status = "VERIFIED"
+            self._mutating_plans_allowed = True
+        else:
+            self.fermion_runtime = None
+            self.control_plane = shared_control_plane(self.config.root)
+            artifacts = self.config.root / "artifacts"
+            present = (artifacts / "first_party_manifest.json").is_file() or (artifacts / "integration_defaults.json").is_file()
+            self.integration_status = "INTEGRATION_UNVERIFIED"
+            self._mutating_plans_allowed = not present
 
     def process(self, observation: str, context: dict[str, Any] | None = None, iterations: int | None = None) -> CognitiveResult:
         context = context or {}; started = time.time(); clock = time.perf_counter(); self._trace("REQUEST_RECEIVED", {"characters": len(observation)})
+        if self._looks_like_bridge(observation):
+            try:
+                return self._process_bridge(observation, approved=bool(context.get("approved")), started=started, clock=clock)
+            except ToolCallParseError:
+                pass
         web_match=re.search(r"https?://\S+",observation)
         if web_match and any(word in observation.lower() for word in ("research","check","verify","source","cite","look up")):
             web=self.fetch_web(web_match.group(0).rstrip(".,)"))
@@ -261,6 +284,61 @@ class CognitiveRuntime:
         elif interpretation["intent"] in ("remember", "memory_write"): reasoning["answer_seed"] = "A semantic-memory write is pending verified store evidence."
         return reasoning
 
+    def apps_manifest(self) -> dict[str, Any]:
+        return self.control_plane.manifest()
+
+    def submit_bridge(self, text: str, *, approved: bool = False) -> dict[str, Any]:
+        try:
+            encoded = json.dumps(parse_qwen_bridge_plan(text))
+        except ToolCallParseError:
+            encoded = text
+        if self.fermion_runtime is not None:
+            planned = self.fermion_runtime.plan(PerceptionEvent("user_text", text), encoded)
+            if planned.plan.mutating and approved and not self._mutating_plans_allowed:
+                self.last_plan = {"plan": asdict(planned.plan),
+                                  "validation": {"valid": False, "reasons": ["INTEGRATION_UNVERIFIED"]},
+                                  "executed": False}
+                return self.last_plan
+            if not approved:
+                self.last_plan = {"plan": asdict(planned.plan), "validation": asdict(planned.validation),
+                                  "executed": False}
+                return self.last_plan
+            receipt = self.fermion_runtime.authorize(planned, approved=True)
+            self.last_plan = {"plan": asdict(receipt.runtime_plan.plan),
+                              "validation": asdict(receipt.report.validation),
+                              "executed": bool(receipt.report.records), "report": receipt.report.to_dict(),
+                              "provenance": receipt.provenance.to_dict()}
+            return self.last_plan
+        plan = self.control_plane.parse_plan(text, encoded)
+        validation = self.control_plane.validate(plan)
+        if plan.mutating and approved and not self._mutating_plans_allowed:
+            denied = {"plan": asdict(plan), "validation": {"valid": False, "reasons": ["INTEGRATION_UNVERIFIED"]},
+                      "executed": False}
+            self.last_plan = denied
+            return denied
+        if not approved:
+            self.last_plan = {"plan": asdict(plan), "validation": asdict(validation), "executed": False}
+            return self.last_plan
+        report = self.control_plane.execute(plan, approved=True)
+        self.last_plan = {"plan": asdict(plan), "validation": asdict(report.validation),
+                          "executed": bool(report.records), "report": report.to_dict()}
+        return self.last_plan
+
+    @staticmethod
+    def _looks_like_bridge(text: str) -> bool:
+        stripped = text.strip()
+        return stripped.startswith("{") or "<function=fermion_plan>" in stripped or stripped.startswith("<tool_call>")
+
+    def _process_bridge(self, observation: str, *, approved: bool, started: float, clock: float) -> CognitiveResult:
+        result = self.submit_bridge(observation, approved=approved)
+        response = json.dumps(result, indent=2, default=str)
+        interpretation = {"intent": "control_plan", "goal": observation, "tool_needed": True}
+        return CognitiveResult(response, interpretation, {"control_plan": result}, {}, {},
+                               {"timestamp": started, "source": "control_plane",
+                                "integration_status": self.integration_status},
+                               generation_status=self.language.last_status.to_dict(),
+                               timing={"total_ms": (time.perf_counter() - clock) * 1000})
+
     def _maybe_execute(self, text: str, interpretation: dict[str, Any]) -> tuple[dict[str, Any] | None, ExecutionEvidence | None]:
         if interpretation["intent"] != "code": return None, None
         if any(term in text.lower() for term in ("fermion_sensor_lab","project build","build the project")):
@@ -268,23 +346,18 @@ class CognitiveRuntime:
             if blockers:return {"status":"CODING_EXECUTION_UNAVAILABLE","blockers":blockers},None
         proof = re.search(r"create\s+(workspace[\\/]([\w.-]+\.py)).*?prints? exactly\s+([A-Z0-9_]+)", text, re.I | re.S)
         if proof:
-            relative, filename, token = proof.group(1).replace("\\", "/"), proof.group(2), proof.group(3)
-            target = (self.config.root / relative).resolve(); workspace = (self.config.root / "workspace").resolve()
+            relative = proof.group(1).replace("\\", "/")
+            token = proof.group(3)
+            workspace = (self.config.root / "workspace").resolve()
+            target = (self.config.root / relative).resolve()
             if workspace not in target.parents: return {"status": "VERIFICATION_FAILED"}, None
-            target.parent.mkdir(parents=True, exist_ok=True); target.write_text(f"print({token!r})\n", encoding="utf-8")
-            import subprocess, sys
-            started = utc_now(); command = [sys.executable, str(target)]; run = subprocess.run(command, cwd=self.config.root, capture_output=True, text=True, timeout=10)
-            evidence = ExecutionEvidence.create(command, self.config.root, run.returncode, run.stdout, run.stderr, started, [target])
-            return {"file": str(target), "return_code": run.returncode}, evidence
-        # A bounded local implementation for the documented prime-program task; records real output.
-        filename = "primes.py"; target = self.config.root / filename
+            evidence = run_workspace_proof(self.config.root, relative, token)
+            return {"file": str(target), "return_code": evidence.exit_code, "executor": "guarded_executor"}, evidence
         if "prime" not in text.lower(): return {"status": "VERIFICATION_FAILED"}, None
-        source = "def primes(limit):\n    return [n for n in range(2, limit + 1) if all(n % d for d in range(2, int(n ** 0.5) + 1))]\n\nif __name__ == '__main__':\n    print(primes(30))\n"
-        target.write_text(source, encoding="utf-8")
-        import subprocess, sys
-        run = subprocess.run([sys.executable, str(target)], cwd=self.config.root, capture_output=True, text=True, timeout=10)
-        evidence = ExecutionEvidence.create([sys.executable, str(target)], self.config.root, run.returncode, run.stdout, run.stderr, utc_now(), [target])
-        status = {"file": str(target), "return_code": run.returncode}; self.self_model["actions"].append(status); return status, evidence
+        evidence = run_prime_program(self.config.root)
+        status = {"file": str(self.config.root / "primes.py"), "return_code": evidence.exit_code, "executor": "guarded_executor"}
+        self.self_model["actions"].append(status)
+        return status, evidence
 
     def _memory_write_receipt(self, interpretation: dict[str, Any]) -> MemoryReceipt | None:
         if interpretation["intent"] not in ("remember", "memory_write"): return None

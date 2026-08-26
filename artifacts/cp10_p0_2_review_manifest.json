@@ -1,0 +1,38 @@
+{
+  "schema_version": "fermion-cp10-review-manifest-v1",
+  "protocol_id": "CP10-P0.2",
+  "review_of": "CP10-P0.1",
+  "status": "PROVISIONAL_NOT_FROZEN",
+  "implementation_authorized": false,
+  "execution_authorized": false,
+  "scientific_verdict": "UNEARNED",
+  "p0_1_preservation": {
+    "markdown_sha256_expected": "FD7CF8D9F9B92CC6E9BFC7B87FF2DA4CE918D9CB6A161E691EF7452A67FBC804",
+    "json_sha256_expected": "5DE03D9FAAE5197462819F4365F3A834049105AEAAF1F7B319794DD7788EA8BA",
+    "markdown_sha256_observed_before_revision": "FD7CF8D9F9B92CC6E9BFC7B87FF2DA4CE918D9CB6A161E691EF7452A67FBC804",
+    "json_sha256_observed_before_revision": "5DE03D9FAAE5197462819F4365F3A834049105AEAAF1F7B319794DD7788EA8BA",
+    "preserved_before_revision": true
+  },
+  "p0_2_hashes": {
+    "markdown_sha256": "92D6C6706D3D0C6AE3A05F3BE309AB97F6526904448640AA5B561F275F99311E",
+    "json_sha256": "1340F0C5E1F81FD0D96C120B41F2EF71C6A619EB412A189FEE615F059E011E0E"
+  },
+  "differences_from_p0_1": [
+    {"area":"psi baseline","change":"Replaced unspecified frozen psi sector with the explicit nondimensional quadratic free energy and fixed kappa_psi=m_psi^2=M_psi=1, psi_bar=0; fixed kappa_Phi=1 provisionally."},
+    {"area":"derivation","change":"Added explicit mixed Model-B(psi)/Model-A(Phi) variational derivatives, continuous dissipation identity, and independent finite-difference audit."},
+    {"area":"spectral convention","change":"Locked FFT normalization, Parseval weights, wave-number ordering, Laplacian symbol, Hermitian/self-conjugate handling, float64/complex128, and startup audits."},
+    {"area":"dealiasing","change":"Replaced the invalid radial post-filter diagnostic with rectangular 2/3 nonlinear-product masking, pre-filter removed energy, and a nonzero resolved near-cutoff shell."},
+    {"area":"initial conditions","change":"Added Philox indexed continuum Fourier construction, paired-array hashes, and cross-resolution coefficient reuse."},
+    {"area":"controls/endpoints","change":"Replaced sign reversal as a null with one-way, Hermitian phase-permuted, and conditional label-permutation null controls; sign reversal is now sensitivity only. Added E_psi, E_Phi, feedback endpoints, fixed cadence, and quadrature."},
+    {"area":"statistics","change":"Requires every null-control separation by paired margin and CI, defines practical equivalence, defines the held-out ensemble estimand, and locks paired bootstrap/quantiles/index provenance."},
+    {"area":"convergence","change":"Requires common-band full-field, final-state, trajectory, energy, and endpoint convergence with absolute/relative floors, rather than scalar endpoint convergence alone."},
+    {"area":"energy audit","change":"Defines all-accepted-step D_num and R_E with refinement criterion; maintains no unproven discrete monotonicity claim."},
+    {"area":"scope","change":"Predeclares five computational stages and 351 simulation conditions, including deterministic replays, rather than an implicit Cartesian expansion."},
+    {"area":"reproducibility and claims","change":"Separates bitwise identity from tolerance-based numerical equivalence and expressly limits any future claim to the stated classical numerical surrogate."}
+  ],
+  "review_limitations": [
+    "This manifest records a proposal revision only; it does not validate an implementation.",
+    "P0.2 hashes are recorded here; this manifest's own hash must be computed after its final write by the review command.",
+    "No CP10/CP11 execution, registry update, freeze, commit, or scientific verdict is authorized."
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "manifest": "artifacts/manifests/first_party_manifest_FA9BE9D0C8DCB1FE58F93BDDB8F2DD398BFD42C5C26939F4EB0823D6D2070527.json",
+  "gates": "artifacts/scientific_gate_registry_v2.json"
+}

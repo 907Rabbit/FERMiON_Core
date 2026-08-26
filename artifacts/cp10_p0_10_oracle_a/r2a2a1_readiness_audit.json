@@ -1,0 +1,1 @@
+{"compile":"PASS","frozen_trajectories":0,"launch_record":"NOT CREATED","r2a2a1":"BLOCKED","reason":"RunSpec migration passes bounded existing tests, but the requested exhaustive RunSpec negative-test matrix is incomplete.","schema_version":"cp10-p0.10-r2a2a1-readiness-v1","status":"BLOCKED_PENDING_R2A2A2_AUTHORIZATION_REVALIDATION","tests":"6 passed"}

@@ -1,0 +1,89 @@
+{
+  "schema_version": "fermion-scientific-gates-v1",
+  "gates": [
+    {
+      "gate_id": "AI-G2S-P1.0",
+      "state": "blocked",
+      "evidence_paths": [
+        "artifacts/ai_g2s_r1/protocol_coverage.json"
+      ],
+      "evidence_sha256": {
+        "artifacts/ai_g2s_r1/protocol_coverage.json": "0192725D4A3276E152F75AD27A50F44169CF919F14B5F8A0A618C87916BA1211"
+      },
+      "conclusion": "Protocol coverage artifact records unresolved construction blockers; no execution result is claimed."
+    },
+    {
+      "gate_id": "AI-G2S-P1.1",
+      "state": "gated_preexecution",
+      "evidence_paths": [
+        "configs/ai_g2s_p1_1.json",
+        "artifacts/ai_g2s_r1_1_repaired/launch_readiness_audit.json"
+      ],
+      "evidence_sha256": {
+        "configs/ai_g2s_p1_1.json": "BBDAB6671494069BBA94D9E2D0382D9A91896C634BEB83A315E7936FC961B03C",
+        "artifacts/ai_g2s_r1_1_repaired/launch_readiness_audit.json": "851B2CBB2327EBD3F16B4CE6A39F8464FF79D9C983D9769D6025E77339D5348F"
+      },
+      "conclusion": "Pre-execution protocol and readiness evidence exist; full paired execution and final predictions remain unperformed."
+    },
+    {
+      "gate_id": "CP10",
+      "state": "gated_preexecution",
+      "evidence_paths": [
+        "protocols/cp10_p0_10_FREEZE_RECEIPT.json",
+        "artifacts/cp10_p0_10_FREEZE_RECEIPT.json.sha256"
+      ],
+      "evidence_sha256": {
+        "protocols/cp10_p0_10_FREEZE_RECEIPT.json": "482D3EA675350BA359E66B61D381D0CA929CA7A2E02B56F5D07848C763506540",
+        "artifacts/cp10_p0_10_FREEZE_RECEIPT.json.sha256": "E039030F3236932168D9C3D41D12C5D9044031821198336E01F322CCF0BC61AD"
+      },
+      "conclusion": "P0.10 Oracle-A implementation protocol is frozen. Oracle-A/B trajectories were not run; CP10 verdict remains UNEARNED."
+    },
+    {
+      "gate_id": "CP11",
+      "state": "unimplemented",
+      "evidence_paths": [],
+      "evidence_sha256": {},
+      "conclusion": "No implemented first-party CP11 gate was located in the Phase 1 audit."
+    },
+    {
+      "gate_id": "GSE",
+      "state": "provisional",
+      "evidence_paths": [],
+      "evidence_sha256": {},
+      "conclusion": "GSE code hooks exist, but no artifact-backed scientific utility conclusion is recorded."
+    },
+    {
+      "gate_id": "HR-193",
+      "state": "frozen_reference_verified",
+      "evidence_paths": [
+        "fermion/hr/reference_193.py"
+      ],
+      "evidence_sha256": {
+        "fermion/hr/reference_193.py": "8F544FCE6F0E7A03D52A9CBC46B366D0B9F82404B952CF479126CCA9D1EEF953"
+      },
+      "conclusion": "Reference source bytes match the recorded AI-G2S P1.1 manifest value; this is not a performance claim."
+    },
+    {
+      "gate_id": "MFE",
+      "state": "unimplemented",
+      "evidence_paths": [],
+      "evidence_sha256": {},
+      "conclusion": "No implemented first-party MFE component was located in the Phase 1 audit."
+    },
+    {
+      "gate_id": "PhiLang",
+      "state": "unimplemented",
+      "evidence_paths": [],
+      "evidence_sha256": {},
+      "conclusion": "No implemented first-party PhiLang component was located in the Phase 1 audit."
+    },
+    {
+      "gate_id": "Psilang",
+      "state": "unimplemented",
+      "evidence_paths": [],
+      "evidence_sha256": {},
+      "conclusion": "No implemented first-party Psilang component was located in the Phase 1 audit."
+    }
+  ],
+  "registry_sha256": "8D6C75728CCFE230D7ADA633F1C2BCE7B18FFD888B81598564608468FA15D7EE"
+}

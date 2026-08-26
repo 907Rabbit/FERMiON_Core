@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from fermion.source_exclusions import EXCLUDED_DIRECTORY_NAMES
 from fermion.software.application import (Action, ActionResult, ApplicationInterface, CapabilityDefinition,
                                           CapabilitySet, Checkpoint, Observation, RollbackResult,
                                           VerificationResult)
@@ -61,6 +62,8 @@ class LocalProgramAdapter(ApplicationInterface):
         try:
             resolved = path.resolve()
             if not resolved.is_file() or resolved.suffix.lower() != ".exe" or resolved.name.lower() in self._DENIED_EXECUTABLES:
+                return False
+            if any(part in EXCLUDED_DIRECTORY_NAMES for part in resolved.parts):
                 return False
             return any(resolved.is_relative_to(root) for root in self.trusted_roots)
         except OSError:

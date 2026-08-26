@@ -21,3 +21,13 @@ def test_local_program_adapter_rejects_unknown_alias(tmp_path):
     adapter = LocalProgramAdapter(tmp_path / "catalog.json", (Path(r"C:\Windows\System32"),))
     result = adapter.execute(Action("launch_program", {"alias": "unknown"}))
     assert not result.success
+
+
+def test_local_program_adapter_rejects_excluded_vendor_executables(tmp_path):
+    vendor = tmp_path / "fermion" / "bettercap"
+    vendor.mkdir(parents=True)
+    executable = vendor / "bettercap.exe"
+    executable.write_bytes(b"MZ")
+    adapter = LocalProgramAdapter(tmp_path / "catalog.json", (tmp_path,))
+    result = adapter.execute(Action("register_program", {"alias": "bettercap", "executable": str(executable)}))
+    assert not result.success

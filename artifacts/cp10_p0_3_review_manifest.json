@@ -1,0 +1,19 @@
+{
+  "schema_version":"fermion-cp10-review-manifest-v1","protocol_id":"CP10-P0.3","review_of":"CP10-P0.2","status":"PROVISIONAL_NOT_FROZEN","implementation_authorized":false,"execution_authorized":false,"scientific_verdict":"UNEARNED",
+  "predecessor_hashes_before_and_after":{"p0_1_markdown":"FD7CF8D9F9B92CC6E9BFC7B87FF2DA4CE918D9CB6A161E691EF7452A67FBC804","p0_1_json":"5DE03D9FAAE5197462819F4365F3A834049105AEAAF1F7B319794DD7788EA8BA","p0_2_markdown":"92D6C6706D3D0C6AE3A05F3BE309AB97F6526904448640AA5B561F275F99311E","p0_2_json":"1340F0C5E1F81FD0D96C120B41F2EF71C6A619EB412A189FEE615F059E011E0E","verification":"expected values were observed before P0.3; final verification is required after this manifest write"},
+  "p0_3_hashes":{"markdown":"944F1F57DBC7D9B76F848A9280B97483B8F4BD4A5EE2306141D95C8D292D738D","json":"4501C07F57BEC3869CF98A13C5327103AC5A95A7C9751C7619A199CE5D538929"},
+  "p0_2_to_p0_3_changes":[
+    "Replaced 2/3 state-mask de-aliasing with one 2N padded product path for every quadratic and cubic nonlinearity, including Phi cubed.",
+    "Corrected even-N indexing to NumPy order, explicitly excluded Nyquist states, and aligned derivative/gradient-energy conventions.",
+    "Replaced resolution-dependent p*N+q RNG counters with physical signed-mode Philox counters and exact zigzag32 encoding.",
+    "Fully defined zero-mean psi and Phi modal initial fields, RMS normalization, modal/array hashes, and cross-resolution reuse.",
+    "Added a continuum coercivity calculation and checked lambda_Phi>eta^2 for every proposed tuple, while distinguishing it from numerical guards.",
+    "Froze simultaneous old-state first-order IMEX equations, post-step zero-mode/Nyquist/Hermitian rules, and correction tolerance.",
+    "Replaced the unresolved oracle with exact eta-zero decay and a fully forced manufactured coupled oracle.",
+    "Removed cyclic label permutation; added exact phase randomization and separate H1-H4 control hypotheses without false independence.",
+    "Replaced scalar-only convergence with all-field/common-band/product-diagnostic convergence and accepted-step energy criteria.",
+    "Deduplicated the staged matrix to 208 unique configurations plus 12 replay attempts, 220 total simulation attempts; production N64/dt=.00125 now requires prior calibration success."
+  ],
+  "condition_enumeration":{"method":"dry-run canonical tuple enumeration only; no CP10 solver, implementation, or evaluation executed","identity":"seed|arm|N|dt|lambda_Phi|v_Phi|eta","raw_stage_records":224,"cross_stage_reuse_records":16,"unique_conditions":208,"replay_attempts":12,"total_simulation_attempts":220,"duplicate_condition_ids":0,"canonical_condition_manifest_sha256":"F67CC035EC5053F9FE07A376A8226003014CAF5394764D79330FEDE6A17F8C76"},
+  "review_limitations":["This is proposal review evidence, not a CP10 execution result.","The manifest's own SHA-256 is computed only after its final write.","No freeze, implementation, execution, commit, registry update, or scientific verdict is authorized."]
+}
