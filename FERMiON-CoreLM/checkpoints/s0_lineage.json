@@ -1,0 +1,216 @@
+{
+  "baselines": {
+    "tinystories_pilot": {
+      "tiny_nll_before": 3.7475920965670366,
+      "wiki_nll_before": 2.486200026697914
+    }
+  },
+  "champion_pointer_semantics": {
+    "current_champion": "canonical_model_champion",
+    "deployed_gguf_artifact": "independent deployed inference artifact; not changed by training champion promotion"
+  },
+  "current_champion": {
+    "checkpoint": "s1_long@819200",
+    "effective_context_length": 256,
+    "gate_policy_hash": "D8AE9D63B943D3BB21C4A49A10A89816583ED6170EEDB6D47151FA65E90DAD14",
+    "identity": "s1_long@819200",
+    "model_hash": "11FFAC5AF07D18D32E6706D757A3D22DF21F42F1BF6B344C31EE705D1BB2318A",
+    "path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s1_champion_promotion_20260915_01\\champion_s1_long_t819200",
+    "post_s0_lineage_tokens": 1228800,
+    "previous_champion": "w85@192000",
+    "previous_champion_model_hash": "77853D95B9EA82218C5A4E616A6E557B2D848B2A134F4E98093A900381FC216E",
+    "previous_champion_path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s0_pareto_recovery_post_v3_1_20260911_01\\w85\\step_018009_t192000",
+    "promotion_manifest": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s1_champion_promotion_20260915_01\\promotion_manifest.json",
+    "promotion_manifest_sha256": "8463EF5A47DBCE36BE22EC063F31A7CB060E27ECC35473258E55E3C390B5662B",
+    "status": "s1_v4_1_promoted_canonical_training_champion",
+    "tiny_val_nll": 2.092408306141252,
+    "wiki_val_nll": 2.252478673479351
+  },
+  "deployed_gguf_artifact": {
+    "champion": "s1_long@819200",
+    "f32": "G:\\MyAIproject\\FERMiON-CoreLM\\exports\\FERMiON-CoreLM-S1-s1long-a819200-F32-fermion.gguf",
+    "f32_sha256": "5AC11A681A1F721B67512615F9A7B9D6ABFD826F0E47A1BC5893842E38896BFD",
+    "q8_0": "G:\\MyAIproject\\FERMiON-CoreLM\\exports\\FERMiON-CoreLM-S1-s1long-a819200-Q8_0-fermion.gguf",
+    "q8_0_sha256": "B66F14EDEEB64F5B1643800C0A6149FC9BC16F5CF2E3917D36E8720D089F54A1",
+    "production_f32_alias": "G:\\MyAIproject\\FERMiON-CoreLM\\exports\\FERMiON-CoreLM-S0-F32.gguf",
+    "production_q8_0_alias": "G:\\MyAIproject\\FERMiON-CoreLM\\exports\\FERMiON-CoreLM-S0-Q8_0.gguf",
+    "production_manifest": "G:\\MyAIproject\\FERMiON-CoreLM\\exports\\production_manifest.json",
+    "production_manifest_sha256": "C68725DCCBCC0B150D8DAADA6EABF6EAB63824B2822000AE28615F9B0E46B43D",
+    "cutover": "s1_gguf_alias_cutover_20260920_01",
+    "rollback_lineage": "w85@192000",
+    "superseded_pre_cutover": {
+      "champion": "w85@192000",
+      "f32": "G:\\MyAIproject\\FERMiON-CoreLM\\exports\\FERMiON-CoreLM-S0-v3.1-w85-t192000-F32-fermion.gguf",
+      "q8_0": "G:\\MyAIproject\\FERMiON-CoreLM\\exports\\FERMiON-CoreLM-S0-v3.1-w85-t192000-Q8_0-fermion.gguf",
+      "production_manifest_sha256": "49F6BE3EC72F052C68553A3A60FBB8DAFB56BB31D449D75EE091B2B51623752B"
+    }
+  },
+  "experiments": [
+    {
+      "branches": [
+        {
+          "branch": "start_12750",
+          "gate": {
+            "eligible": false,
+            "status": "reference"
+          },
+          "normalized_score": 1.0,
+          "stop": "untouched",
+          "tiny_nll": 3.7475920965670366,
+          "tiny_tokens": 0,
+          "wiki_forgetting": 0.0,
+          "wiki_nll": 2.486200026697914,
+          "wiki_replay": 0
+        },
+        {
+          "branch": "tiny_only",
+          "gate": {
+            "eligible": false,
+            "generation_ok": true,
+            "material_tiny": true,
+            "normalized_score": 1.1771705888859,
+            "score_improved": false,
+            "status": "reject_wiki_forgetting",
+            "thresholds": {
+              "provisional": true,
+              "tiny_material_nll": 0.05,
+              "wiki_flag_nll": 0.03,
+              "wiki_reject_nll": 0.1
+            },
+            "tiny_delta": -1.8858150604931516,
+            "wiki_forgetting": 2.1320366237988595,
+            "wiki_preferred": false,
+            "wiki_within_reject_gate": false
+          },
+          "normalized_score": 1.1771705888859,
+          "stop": "wiki_forgetting>0.1:2.1320366237988595",
+          "tiny_nll": 1.861777036073885,
+          "tiny_tokens": 500224,
+          "wiki_forgetting": 2.1320366237988595,
+          "wiki_nll": 4.618236650496773,
+          "wiki_replay": 0
+        },
+        {
+          "branch": "tiny_wiki_replay",
+          "gate": {
+            "eligible": false,
+            "generation_ok": true,
+            "material_tiny": true,
+            "normalized_score": 0.8049406217954738,
+            "score_improved": true,
+            "status": "reject_wiki_forgetting",
+            "thresholds": {
+              "provisional": true,
+              "tiny_material_nll": 0.05,
+              "wiki_flag_nll": 0.03,
+              "wiki_reject_nll": 0.1
+            },
+            "tiny_delta": -1.8165778587078882,
+            "wiki_forgetting": 0.23522747962680457,
+            "wiki_preferred": false,
+            "wiki_within_reject_gate": false
+          },
+          "normalized_score": 0.8049406217954738,
+          "stop": "wiki_forgetting>0.1:0.23522747962680457",
+          "tiny_nll": 1.9310142378591484,
+          "tiny_tokens": 400384,
+          "wiki_forgetting": 0.23522747962680457,
+          "wiki_nll": 2.7214275063247184,
+          "wiki_replay": 99840
+        }
+      ],
+      "data_manifest": "G:\\MyAIproject\\FERMiON-CoreLM\\data\\manifests\\s0_tinystories_pilot25m.json",
+      "export": {
+        "promoted": false
+      },
+      "name": "TinyStories-S0-Pilot25M",
+      "parent": "step_012750",
+      "promoted": false,
+      "winner": "start_12750"
+    },
+    {
+      "child": "step_014704",
+      "child_hash": "5ECDB8B21A84A89A1A297A58BBC06C3F4D2DC15242560B2B5AEB01C6663157D9",
+      "child_path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s0_continual_1m\\step_014704",
+      "dataset_manifest": "G:\\MyAIproject\\FERMiON-CoreLM\\data\\manifests\\s0_tinystories_pilot25m.json",
+      "learning_rate": 3e-05,
+      "lr_schedule": "constant_3e-5",
+      "mixture": {
+        "tiny_fraction": 0.3,
+        "wiki_fraction": 0.7
+      },
+      "name": "s0_continual_1m",
+      "optimizer_policy": "fresh_adamw_at_sweep_start_then_continued",
+      "parent": "step_012750",
+      "parent_hash": "0D64013EC32641B9BB4C011C648E5B04A38B7260CBAE9D9CF1287659142784DE",
+      "parent_path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s0_wiki_full\\step_012750",
+      "promotion_reason": "sole_non_dominated_passing_cell",
+      "ten_m_justification": "strong",
+      "token_count": 1000448,
+      "validation_metrics": {
+        "tiny_val_nll": 2.305036278216788,
+        "wiki_val_nll": 2.3244569018532664
+      }
+    },
+    {
+      "child": "champion_step_016658",
+      "child_hash": "8DC2CBC5D6B8FFC8BA62566A1A29835D48F3D77300BA57395AC059015485C48E",
+      "child_path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s0_continual_10m\\champion_step_016658",
+      "dataset_manifest": "G:\\MyAIproject\\FERMiON-CoreLM\\data\\manifests\\s0_tinystories_pilot25m.json",
+      "learning_rate": "cosine 3e-5 -> 3e-6",
+      "mixture": {
+        "tiny_fraction": 0.3,
+        "wiki_fraction": 0.7
+      },
+      "name": "s0_continual_10m",
+      "parent": "step_014704",
+      "parent_hash": "5ECDB8B21A84A89A1A297A58BBC06C3F4D2DC15242560B2B5AEB01C6663157D9",
+      "parent_path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s0_continual_1m\\step_014704",
+      "promotion_reason": "collapse-free non-dominated checkpoint before unk_loop at +2M",
+      "stop_reason": "unk_loop at +2.0M additional",
+      "token_count": 1000448,
+      "validation_metrics": {
+        "tiny_val_nll": 2.117700876551585,
+        "wiki_val_nll": 2.296039394815804
+      }
+    },
+    {
+      "child": "w85@192000",
+      "child_hash": "77853D95B9EA82218C5A4E616A6E557B2D848B2A134F4E98093A900381FC216E",
+      "child_path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s0_pareto_recovery_post_v3_1_20260911_01\\w85\\step_018009_t192000",
+      "gate_policy_hash": "AC11C14DB15E077A4F9ABB3FC11374BA0CBE24395285E822B2BE98BB471904C2",
+      "name": "s0_champion_promotion_20260912_01",
+      "parent": "champion_step_016658",
+      "promotion_manifest_sha256": "8FACD92233C9CE7D3B724341C8F2D20E12C3F24F64EE524E993F2B15547A58B3"
+    },
+    {
+      "child": "s1_long@819200",
+      "child_hash": "11FFAC5AF07D18D32E6706D757A3D22DF21F42F1BF6B344C31EE705D1BB2318A",
+      "child_path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s1_champion_promotion_20260915_01\\champion_s1_long_t819200",
+      "name": "s1_champion_promotion_20260915_01",
+      "parent": "w85@192000",
+      "promotion_manifest_sha256": "8463EF5A47DBCE36BE22EC063F31A7CB060E27ECC35473258E55E3C390B5662B"
+    }
+  ],
+  "gates": {
+    "provisional": true,
+    "tiny_material_nll": 0.05,
+    "wiki_flag_nll": 0.03,
+    "wiki_reject_nll": 0.1
+  },
+  "model_family": "FERMiON-CoreLM",
+  "parent": {
+    "checkpoint": "step_010991",
+    "path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s0_wiki\\step_010991",
+    "role": "immutable_wikitext_anchor",
+    "wiki_val_nll": 2.6011421333066176
+  },
+  "scale": "S0",
+  "starting_weights": {
+    "checkpoint": "step_012750",
+    "path": "G:\\MyAIproject\\FERMiON-CoreLM\\checkpoints\\s0_wiki_full\\step_012750",
+    "reason": "promoted from s0_wiki_full under NLL<2.601 and no collapse",
+    "wiki_val_nll": 2.486200026697914
+  },
+  "total_training_tokens": 6528000
+}
