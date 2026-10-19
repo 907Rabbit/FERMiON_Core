@@ -31,6 +31,12 @@ def test_decode_ciphertext_rejects_empty_and_oversized_input():
         pass
 
 
+def test_gods_eye_view_is_not_an_inspect_only_attack_surface(tmp_path):
+    plane = default_control_plane(tmp_path)
+    assert plane._applications["gods_eye_view"].specification("start") is not None
+    assert plane._applications["bettercap"].specification("start") is None
+
+
 def test_live_attack_applications_are_registered_but_do_not_launch(tmp_path):
     plane = default_control_plane(tmp_path)
     for name in ("bettercap", "hackingtool", "ghosttrack", "spiderfoot", "codex"):

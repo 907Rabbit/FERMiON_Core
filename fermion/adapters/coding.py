@@ -1,4 +1,4 @@
-"""Typed, non-executing source-file control for the FERMiON coding sandbox."""
+"""Typed source-file and approved process control for the FERMiON coding sandbox."""
 
 from __future__ import annotations
 
@@ -22,10 +22,12 @@ class CodingSandboxConfig:
     allowed_roots: tuple[Path, ...]
     editor_executable: Path = Path(r"C:\Windows\System32\notepad.exe")
     launch_enabled: bool = False
+    execution_root: Path | None = None
+    execution_timeout_seconds: int = 120
 
 
 class CodingSandboxAdapter(ApplicationInterface):
-    """Edit approved text/source files; never execute, compile, or shell out to code."""
+    """Edit approved files and run explicitly approved argv-based processes."""
 
     _CAPABILITIES = (
         CapabilityDefinition("inspect_file", False, True, "Read a source or text file."),
@@ -35,6 +37,7 @@ class CodingSandboxAdapter(ApplicationInterface):
         CapabilityDefinition("rename_file", True, True, "Rename a source or text file."),
         CapabilityDefinition("delete_file", True, True, "Delete a source or text file."),
         CapabilityDefinition("open_in_editor", False, True, "Open a file in the configured editor; never run it."),
+        CapabilityDefinition("run", False, False, "Run an approved command in the configured workspace."),
     )
     _TEXT_EXTENSIONS = frozenset({
         ".py", ".pyi", ".js", ".jsx", ".ts", ".tsx", ".json", ".md", ".txt", ".html", ".htm", ".css",
@@ -51,6 +54,16 @@ class CodingSandboxAdapter(ApplicationInterface):
             raise ValueError("coding sandbox requires at least one allowed root")
         if not config.editor_executable.is_file():
             raise ValueError(f"editor executable not found: {config.editor_executable}")
+        execution_root = config.execution_root or self.root
+        self.execution_root = execution_root.resolve()
+        if not any(self.execution_root == root or self.execution_root.is_relative_to(root) for root in self.roots):
+            raise ValueError("execution root must be inside a configured coding root")
+        if not self.execution_root.is_dir():
+            raise ValueError("execution root must be an existing directory")
+        if isinstance(config.execution_timeout_seconds, bool) or not isinstance(config.execution_timeout_seconds, int):
+            raise ValueError("execution timeout must be an integer")
+        if not 1 <= config.execution_timeout_seconds <= 300:
+            raise ValueError("execution timeout must be between 1 and 300 seconds")
         self._last_state: dict[str, Any] = {"last_path": None, "last_sha256": None}
         self._checkpoints: dict[str, dict[str, bytes | None]] = {}
         self._active_checkpoint: str | None = None
@@ -77,9 +90,69 @@ class CodingSandboxAdapter(ApplicationInterface):
         if path.exists():
             self._last_state = {"last_path": str(path), "last_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
 
+    def _command(self, value: Any) -> tuple[str, ...]:
+        if not isinstance(value, list) or not 1 <= len(value) <= 64:
+            raise ValueError("command must be a JSON list containing 1 to 64 arguments")
+        command: list[str] = []
+        for argument in value:
+            if not isinstance(argument, str) or not argument or "\x00" in argument:
+                raise ValueError("every command argument must be a nonempty string without NUL bytes")
+            command.append(argument)
+        if sum(len(argument) for argument in command) > 16_384:
+            raise ValueError("command exceeds the 16,384-character limit")
+        return tuple(command)
+
+    def _working_directory(self, value: Any) -> Path:
+        if value is None:
+            return self.execution_root
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("cwd must be a nonempty workspace path")
+        candidate = Path(value)
+        directory = (candidate if candidate.is_absolute() else self.execution_root / candidate).resolve()
+        if directory != self.execution_root and not directory.is_relative_to(self.execution_root):
+            raise ValueError("cwd must stay inside the configured execution workspace")
+        if not directory.is_dir():
+            raise ValueError("cwd must be an existing directory")
+        return directory
+
+    def _run(self, action: Action) -> ActionResult:
+        command = self._command(action.arguments.get("command"))
+        directory = self._working_directory(action.arguments.get("cwd"))
+        timeout = action.arguments.get("timeout_seconds", self.config.execution_timeout_seconds)
+        if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 300:
+            raise ValueError("timeout_seconds must be an integer between 1 and 300")
+        completed = subprocess.run(
+            command,
+            cwd=directory,
+            shell=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+        output_limit = 30_000
+        details = {
+            "command": list(command),
+            "cwd": str(directory),
+            "return_code": completed.returncode,
+            "stdout": completed.stdout[-output_limit:],
+            "stderr": completed.stderr[-output_limit:],
+            "timed_out": False,
+            "executed": True,
+        }
+        if completed.returncode:
+            return ActionResult(action.action_id, False, False, details,
+                                f"process exited with code {completed.returncode}")
+        return ActionResult(action.action_id, True, False, details)
+
     def observe(self) -> Observation:
         return Observation(time.time(), "coding-sandbox", dict(self._last_state),
-                           {"roots": [str(root) for root in self.roots], "execution": "disabled"})
+                           {"roots": [str(root) for root in self.roots], "execution": "approval_required",
+                            "execution_root": str(self.execution_root), "shell": False})
 
     def capabilities(self) -> CapabilitySet:
         return CapabilitySet("coding-sandbox", self._CAPABILITIES)
@@ -88,6 +161,8 @@ class CodingSandboxAdapter(ApplicationInterface):
         if self.capabilities().get(action.operation) is None:
             return ActionResult(action.action_id, False, False, error="undeclared capability")
         try:
+            if action.operation == "run":
+                return self._run(action)
             path = self._path(action.arguments["path"])
             before = self._digest(self._last_state)
             if action.operation == "inspect_file":
@@ -119,6 +194,14 @@ class CodingSandboxAdapter(ApplicationInterface):
             self._remember(path)
             return ActionResult(action.action_id, True, before != self._digest(self._last_state),
                                 {"path": str(path), "state_digest": self._digest(self._last_state), "executed": False})
+        except subprocess.TimeoutExpired as error:
+            return ActionResult(action.action_id, False, False, {
+                "command": list(error.cmd) if isinstance(error.cmd, (list, tuple)) else [str(error.cmd)],
+                "stdout": (error.stdout or "")[-30_000:] if isinstance(error.stdout, str) else "",
+                "stderr": (error.stderr or "")[-30_000:] if isinstance(error.stderr, str) else "",
+                "timed_out": True,
+                "executed": True,
+            }, f"process timed out after {error.timeout} seconds")
         except (KeyError, OSError, UnicodeError, ValueError) as error:
             return ActionResult(action.action_id, False, False, error=f"{type(error).__name__}: {error}")
 

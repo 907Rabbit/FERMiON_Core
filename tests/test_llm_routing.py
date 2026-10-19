@@ -25,7 +25,7 @@ def test_long_prompt_runs_cognition_and_passes_original_request_plus_structured_
     assert "workspace" in verbalize["reasoning"]
     assert result.generation_status["success"] is True
     events = (tmp_path / "logs" / "runtime.log").read_text(encoding="utf-8")
-    for event in ("REQUEST_RECEIVED", "COGNITION_STARTED", "WORKSPACE_UPDATED", "LLM_REQUEST_STARTED", "FINAL_RESPONSE_COMPLETE"):
+    for event in ("REQUEST_RECEIVED", "COGNITION_QUARANTINED", "WORKSPACE_UPDATED", "LLM_REQUEST_STARTED", "FINAL_RESPONSE_COMPLETE"):
         assert event in events
 
 

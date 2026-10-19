@@ -1,14 +1,14 @@
 """Explicit, non-executing web retrieval with evidence receipts."""
 from __future__ import annotations
 from datetime import datetime,timezone
-import hashlib,urllib.request,uuid
+import hashlib,uuid
+from fermion.adapters.internet import InternetAdapter
 from .evidence import WebEvidence
 from urllib.parse import urlparse
 def fetch_url(url:str,timeout:float=15)->WebEvidence:
-    if not url.startswith(("https://","http://")):raise ValueError("WEB_URL_INVALID")
+    if urlparse(url).scheme not in {"https", "http"}:raise ValueError("WEB_URL_INVALID")
     try:
-        request=urllib.request.Request(url,headers={"User-Agent":"FERMiON-Research/1.0"})
-        with urllib.request.urlopen(request,timeout=timeout) as response: raw=response.read(1_000_000);status=response.status
+        url, raw, _, status = InternetAdapter.retrieve_public(url, 1_000_000, timeout)
         text=raw.decode("utf-8",errors="replace");state="WEB_VERIFIED"
     except Exception:
         text="";status=None;state="WEB_UNAVAILABLE"

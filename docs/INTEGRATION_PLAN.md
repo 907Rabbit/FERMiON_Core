@@ -29,6 +29,10 @@ subprocess.
 `vendor_inventory.list_excluded` operation reports that fact. Live attack,
 scan, tracking, or competing-agent wrapping is not registered.
 
+`God's Eye View` is excluded from first-party source hashes and is registered
+as `gods_eye_view`: localhost-only start/stop/open. FERMiON does not proxy its
+feeds or treat globe output as authority.
+
 `local_programs.register_program` rejects executables whose path contains an
 excluded vendor directory name.
 

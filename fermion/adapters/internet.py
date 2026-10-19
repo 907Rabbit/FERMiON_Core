@@ -8,6 +8,7 @@ data; callers must not treat their contents as instructions.
 from __future__ import annotations
 
 import hashlib
+import http.client
 import ipaddress
 import json
 import socket
@@ -16,12 +17,72 @@ import uuid
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, quote_plus, unquote, urlparse, urlunparse
-from urllib.request import Request, urlopen
+from urllib.parse import parse_qs, quote_plus, unquote, urlparse, urlunparse, urljoin
+from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler
+from urllib.error import HTTPError
 
 from fermion.software.application import (Action, ActionResult, ApplicationInterface, CapabilityDefinition,
                                           CapabilitySet, Checkpoint, Observation, RollbackResult,
                                           VerificationResult)
+
+
+def _connect_public(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
+    """Validate the resolved addresses actually used to connect, without re-resolving."""
+    addresses = socket.getaddrinfo(address[0], address[1], 0, socket.SOCK_STREAM)
+    if not addresses or any(not ipaddress.ip_address(item[4][0]).is_global for item in addresses):
+        raise ValueError("private, loopback, and link-local network addresses are not permitted")
+    error = None
+    for family, socktype, protocol, _, target in addresses:
+        connection = socket.socket(family, socktype, protocol)
+        try:
+            if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+                connection.settimeout(timeout)
+            if source_address:
+                connection.bind(source_address)
+            connection.connect(target)
+            return connection
+        except OSError as exc:
+            error = exc
+            connection.close()
+    raise error or OSError("no public address available")
+
+
+class _PublicHTTPConnection(http.client.HTTPConnection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._create_connection = _connect_public
+
+
+class _PublicHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._create_connection = _connect_public
+
+
+class _PublicHTTPHandler(HTTPHandler):
+    def http_open(self, request):
+        return self.do_open(_PublicHTTPConnection, request)
+
+
+class _PublicHTTPSHandler(HTTPSHandler):
+    def https_open(self, request):
+        return self.do_open(_PublicHTTPSConnection, request, context=self._context)
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, newurl):
+        return None
+
+
+def urlopen(request, *, timeout):
+    # No environment proxy or implicit redirect may bypass public-address checks.
+    opener = build_opener(ProxyHandler({}), _NoRedirect(), _PublicHTTPHandler(), _PublicHTTPSHandler())
+    try:
+        return opener.open(request, timeout=timeout)
+    except HTTPError as error:
+        if error.code in {301, 302, 303, 307, 308}:
+            return error
+        raise
 
 
 class _LinkParser(HTMLParser):
@@ -68,7 +129,7 @@ class InternetAdapter(ApplicationInterface):
     @staticmethod
     def _public_url(value: Any) -> str:
         parsed = urlparse(str(value).strip())
-        if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username is not None or parsed.password is not None:
             raise ValueError("URL must be a public HTTP(S) URL without credentials")
         host = parsed.hostname.lower()
         if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
@@ -77,6 +138,8 @@ class InternetAdapter(ApplicationInterface):
             addresses = {item[4][0] for item in socket.getaddrinfo(host, None)}
         except socket.gaierror as error:
             raise ValueError(f"cannot resolve host: {host}") from error
+        if not addresses:
+            raise ValueError("no public address available")
         for address in addresses:
             ip = ipaddress.ip_address(address)
             if not ip.is_global:
@@ -84,20 +147,27 @@ class InternetAdapter(ApplicationInterface):
         return urlunparse((parsed.scheme, parsed.netloc, parsed.path or "/", parsed.params, parsed.query, ""))
 
     def _retrieve(self, value: Any, limit: int) -> tuple[str, bytes, str]:
-        url = self._public_url(value)
-        for _ in range(self._MAX_REDIRECTS + 1):
-            request = Request(url, headers={"User-Agent": self._USER_AGENT, "Accept": "text/html,text/plain,application/json,*/*;q=0.2"})
-            with urlopen(request, timeout=20) as response:  # nosec B310: URL is validated above
-                status = getattr(response, "status", response.getcode())
+        url, data, content_type, _ = self.retrieve_public(value, limit)
+        return url, data, content_type
+
+    @classmethod
+    def retrieve_public(cls, value: Any, limit: int, timeout: float = 20) -> tuple[str, bytes, str, int]:
+        url = cls._public_url(value)
+        for _ in range(cls._MAX_REDIRECTS + 1):
+            request = Request(url, headers={"User-Agent": cls._USER_AGENT, "Accept": "text/html,text/plain,application/json,*/*;q=0.2"})
+            with urlopen(request, timeout=timeout) as response:
+                status = response.status
                 location = response.headers.get("Location")
                 if 300 <= status < 400 and location:
-                    url = self._public_url(location)
+                    url = cls._public_url(urljoin(url, location))
                     continue
+                if not 200 <= status < 300:
+                    raise ValueError(f"unsuccessful HTTP status: {status}")
                 content_type = response.headers.get_content_type() if hasattr(response.headers, "get_content_type") else "application/octet-stream"
                 data = response.read(limit + 1)
                 if len(data) > limit:
                     raise ValueError(f"response exceeds the {limit} byte limit")
-                return url, data, content_type
+                return url, data, content_type, status
         raise ValueError("too many redirects")
 
     def observe(self) -> Observation:

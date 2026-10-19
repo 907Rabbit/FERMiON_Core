@@ -1,0 +1,8 @@
+torch>=2.13
+numpy>=2.5
+
+[test]
+pytest>=9
+
+[windows-ui]
+pywinauto>=0.6.9

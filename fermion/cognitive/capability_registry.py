@@ -10,7 +10,7 @@ import json
 class Capability:
     capability_id: str; implementation_status: str; runtime_status: str; test_status: str
     certification_status: str; exposure_status: str; module: str; symbol: str; interfaces: tuple[str,...]
-    last_verified_at: str; confidence: str = "authoritative"
+    last_verified_at: str | None; confidence: str = "authoritative"
     availability_reason: str|None = None
     def to_dict(self) -> dict[str, object]: return asdict(self)
 
@@ -34,7 +34,14 @@ class CapabilityRegistry:
         ("ciphey_decode","fermion.adapters.ciphey","decode_ciphertext",()),
         ("bettercap_surface","fermion.adapters.vendored_surfaces","bettercap_adapter",()),
         ("llama_runtime","fermion.adapters.llama_runtime","LlamaRuntimeAdapter",()),
+        ("gods_eye_view","fermion.adapters.gods_eye_view","GodsEyeViewAdapter",()),
         ("bounded_python_execution","fermion.cognitive.bounded_execution","run_prime_program",()),
+        ("specialist_router","fermion.cognitive.specialist_router","classify_task",()),
+        ("verifier_loop","fermion.cognitive.verifier_loop","run_verifier_loop",()),
+        ("embedding_client","fermion.cognitive.embeddings","EmbeddingClient",()),
+        ("exact_integer_oracle","fermion.cognitive.oracles","exact_integer_arithmetic",()),
+        ("win_suite","fermion.cognitive.win_suite","run_win_suite",()),
+        ("react_repair","fermion.cognitive.react_repair","run_react_execution",()),
         ("test_receipt","fermion.cognitive.test_receipt","run_pytest_with_receipt",("test-receipt",)),
         # The current executor intentionally supports only bounded documented templates, not arbitrary code.
         ("code_execution","fermion.cognitive.runtime","CognitiveRuntime._maybe_execute",()),
@@ -69,13 +76,14 @@ class CapabilityRegistry:
     def recovery(self, capability_id:str)->dict[str,object]:
         return {"root_cause":capability_id,"recommended_actions":[{"action":"inspect_recent_failures","risk":"low"},{"action":"rerun_targeted_tests","scope":[f"test_{capability_id}"],"risk":"low"},{"action":"verify_dependencies","risk":"low"}],"prohibited_actions":["autonomous_source_edit","silent_registry_mutation"],"success_criteria":["targeted_tests_pass","capability_health_returns_healthy","downstream_failures_clear"],"mutation_permission":False}
     def records(self) -> list[Capability]:
-        now=datetime.now(timezone.utc).isoformat(); records=[]
+        records=[]
         for cid,module,symbol,interfaces in self.SPECS:
             try: active=hasattr(import_module(module),symbol)
             except ImportError: active=False
-            tests=(self.root/"tests").is_dir()
             arbitrary=cid in {"code_execution","workspace_file_write"}; forced=self.overrides.get(cid); active = active and forced != "blocked" and not arbitrary
-            records.append(Capability(cid,"implemented" if active else ("implemented_bounded_only" if arbitrary else "absent"),"active" if active else "unavailable","available" if tests and active else "failing","certified" if active and tests else "unverified","available_to_cognition" if active else "not_exposed",module,symbol,interfaces,now,availability_reason="ARBITRARY_EXECUTION_NOT_IMPLEMENTED" if arbitrary else None))
+            # Importable symbols establish implementation presence, not tested
+            # correctness or recent certification. No test receipt is bound here.
+            records.append(Capability(cid,"implemented" if active else ("implemented_bounded_only" if arbitrary else "absent"),"active" if active else "unavailable","unverified","unverified","available_to_cognition" if active else "not_exposed",module,symbol,interfaces,None,availability_reason="ARBITRARY_EXECUTION_NOT_IMPLEMENTED" if arbitrary else None))
         return records
     def get(self, capability_id: str) -> Capability|None: return next((item for item in self.records() if item.capability_id==capability_id),None)
     def gaps(self) -> dict[str,list[str]]:
@@ -101,6 +109,6 @@ class CapabilityRegistry:
             blocked=row.runtime_status!="active" or any(item["health_status"]=="blocked" for item in deps)
             degraded=not blocked and (row.test_status!="available" or any(item["health_status"]!="healthy" for item in deps))
             score=0 if blocked else 70 if degraded else 100
-            memo[cid]={"id":cid,"implementation_present":row.implementation_status=="implemented","runtime_loaded":row.runtime_status=="active","cognitively_exposed":row.exposure_status=="available_to_cognition","tests_passing":row.test_status=="available","dependencies_healthy":all(item["health_status"]=="healthy" for item in deps),"last_verified_recent":True,"recent_failures":0,"health_score":score,"health_status":"blocked" if blocked else "degraded" if degraded else "healthy"}
+            memo[cid]={"id":cid,"implementation_present":row.implementation_status=="implemented","runtime_loaded":row.runtime_status=="active","cognitively_exposed":row.exposure_status=="available_to_cognition","tests_passing":row.test_status=="available","dependencies_healthy":all(item["health_status"]=="healthy" for item in deps),"last_verified_recent":False,"recent_failures":0,"health_score":score,"health_status":"blocked" if blocked else "degraded" if degraded else "healthy"}
             return memo[cid]
         result={cid:one(cid) for cid in records}; return result.get(capability_id) if capability_id else result

@@ -1,6 +1,6 @@
 # First-party FERMiON module map
 
-Vendor trees under `fermion/{bettercap,Ciphey,CL4R1T4S,codex,GhostTrack,hackingtool,spiderfoot,the-book-of-secret-knowledge}` are not first-party. This map covers the 112 first-party Python modules only.
+Vendor trees under `fermion/{bettercap,Ciphey,CL4R1T4S,codex,GhostTrack,God's Eye View,hackingtool,spiderfoot,the-book-of-secret-knowledge}` are not first-party. This map covers the first-party Python modules only.
 
 ## Package layers
 
@@ -57,7 +57,9 @@ Consumed by: curriculum, software kernel, `python -m fermion reference`. Isolate
 | `runtime_bootstrap.py` | Manifest + gates + provenance composition root. |
 | `integration_runtime.py` | `FermionRuntime.plan` / `authorize`. |
 | `integration_registry.py` | First-party SHA-256 manifest; append-only provenance. |
-| `network.py` / `workspace.py` / `memory.py` | Recurrent PyTorch state; global workspace; SQLite memory. |
+| `network.py` / `workspace.py` / `memory.py` | Quarantined GRU (research-only); global workspace; SQLite memory with nomic-embed or hashed fallback. |
+| `specialist_router.py` / `verifier_loop.py` / `oracles.py` / `embeddings.py` | Specialist lanes; reason-act-verify-repair; exact-integer oracle; embedding client. |
+| `win_suite.py` | FERMiON-WIN-100 held-out checkable suite and promotion gate. |
 | `llm.py` | Local GGUF cortex via llama.cpp adapter. |
 | `scientific_routing.py` / `chemistry.py` / `engineering.py` / `science.py` / `computation.py` | Deterministic oracles + receipts. |
 | `evidence.py` / `evidence_grounding.py` | Execution/memory/web receipts; claim validator. |
@@ -70,7 +72,7 @@ Consumed by: curriculum, software kernel, `python -m fermion reference`. Isolate
 
 ### `fermion/adapters/` — control-plane applications
 
-Registered in `default_control_plane`: notepad_sandbox, coding_sandbox, self_evolver, nmap_reports (offline XML), local_programs, imhex (read-only), internet, llama_runtime, fermion_science, vendor_inventory, ciphey (local decode only), bettercap/hackingtool/ghosttrack/spiderfoot/codex (status/catalog inspect; live launch refused).
+Registered in `default_control_plane`: notepad_sandbox, coding_sandbox, self_evolver, nmap_reports (offline XML), local_programs, imhex (read-only), internet, llama_runtime, fermion_science, vendor_inventory, ciphey (local decode only), bettercap/hackingtool/ghosttrack/spiderfoot/codex (status/catalog inspect; live launch refused), gods_eye_view (localhost Vite lifecycle only; globe output is not authority).
 
 Present but unregistered: `unreal.py`, live Notepad UI (`notepad_ui.py`). Llama generate stays CLI-only.
 

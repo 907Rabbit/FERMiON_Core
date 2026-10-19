@@ -54,6 +54,25 @@ def test_llama_runtime_accepts_openai_compatible_models_health(monkeypatch):
     assert attempts[-1].endswith("/v1/models")
 
 
+def test_llama_runtime_rejects_empty_openai_model_list(monkeypatch):
+    from fermion.adapters.llama_cpp import LlamaServerRuntime
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        @staticmethod
+        def read():
+            return json.dumps({"data": []}).encode()
+
+    monkeypatch.setattr("fermion.adapters.llama_cpp.urllib.request.urlopen",
+                        lambda request, timeout: Response())
+    assert not LlamaServerRuntime(LlamaCppConfig(port=1234)).health()
+
+
 def test_local_curriculum_integrity_memory_and_execution_stages_pass():
     runner = CurriculumRunner(CurriculumConfig(quick=True))
     assert runner.stage0().status == StageStatus.PASSED

@@ -54,7 +54,10 @@ def test_vendor_inventory_lists_excluded_trees_and_does_not_launch(tmp_path: Pat
     entries = report.records[0].result.details["entries"]
     names = {item["name"] for item in entries}
     assert "bettercap" in names and "codex" in names and "hackingtool" in names
-    assert all(item["integration_status"] == "excluded_not_an_adapter" for item in entries)
+    assert "God's Eye View" in names
+    statuses = {item["name"]: item["integration_status"] for item in entries}
+    assert statuses["bettercap"] == "excluded_not_an_adapter"
+    assert statuses["God's Eye View"] == "loopback_lifecycle_adapter"
     assert report.records[0].result.details["launched"] is False
 
 

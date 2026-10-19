@@ -22,9 +22,14 @@ VENDOR_PURPOSE = {
     "CL4R1T4S": "Extracted third-party system prompts; not an adapter.",
     "codex": "Independent coding agent; not a FERMiON tool.",
     "GhostTrack": "Phone/IP tracker; not an adapter.",
+    "God's Eye View": "Cesium OSINT globe; loopback adapter gods_eye_view.",
     "hackingtool": "Security-tool aggregator; not an adapter.",
     "spiderfoot": "OSINT scanner; not a live adapter.",
     "the-book-of-secret-knowledge": "Cheatsheet collection; not an adapter.",
+}
+
+VENDOR_INTEGRATION_STATUS = {
+    "God's Eye View": "loopback_lifecycle_adapter",
 }
 
 
@@ -47,7 +52,7 @@ class VendorInventoryAdapter(ApplicationInterface):
                 "name": name,
                 "present": path.is_dir(),
                 "purpose": VENDOR_PURPOSE.get(name, "Excluded third-party material."),
-                "integration_status": "excluded_not_an_adapter",
+                "integration_status": VENDOR_INTEGRATION_STATUS.get(name, "excluded_not_an_adapter"),
                 "executable": False,
             })
         return rows

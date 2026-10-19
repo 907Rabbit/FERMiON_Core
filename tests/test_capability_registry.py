@@ -6,6 +6,16 @@ def test_registry_reports_live_loaded_capabilities(tmp_path) -> None:
     record=registry.get("calculation_evidence")
     assert record and record.runtime_status == "active" and record.confidence == "authoritative"
 
+
+def test_test_directory_does_not_certify_capability_or_recency(tmp_path) -> None:
+    (tmp_path / "tests").mkdir()
+    registry = CapabilityRegistry(tmp_path)
+    record = registry.get("calculation_evidence")
+    assert record.test_status == "unverified" and record.certification_status == "unverified"
+    assert record.last_verified_at is None
+    health = registry.health("calculation_evidence")
+    assert health["tests_passing"] is False and health["last_verified_recent"] is False
+
 def test_runtime_self_audit_is_read_only_and_exposes_gaps(tmp_path) -> None:
     runtime=CognitiveRuntime(RuntimeConfig(root=tmp_path))
     audit=runtime.self_audit()

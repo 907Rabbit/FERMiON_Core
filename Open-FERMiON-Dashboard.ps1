@@ -2,16 +2,17 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = 'G:\MyAIproject'
 $python = Join-Path $projectRoot '.venv\Scripts\python.exe'
-$dashboardUrl = 'http://127.0.0.1:8765'
+$dashboardPort = 8766
+$dashboardUrl = "http://127.0.0.1:$dashboardPort"
 
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "FERMiON Python environment was not found: $python"
 }
 
-$listener = Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue |
+$listener = Get-NetTCPConnection -LocalPort $dashboardPort -State Listen -ErrorAction SilentlyContinue |
     Select-Object -First 1
 if (-not $listener) {
-    Start-Process -FilePath $python -ArgumentList '-m fermion dashboard' `
+    Start-Process -FilePath $python -ArgumentList "-m fermion dashboard --port $dashboardPort" `
         -WorkingDirectory $projectRoot -WindowStyle Hidden
     Start-Sleep -Seconds 2
 }

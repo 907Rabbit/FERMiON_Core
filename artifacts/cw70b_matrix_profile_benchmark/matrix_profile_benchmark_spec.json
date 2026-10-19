@@ -1,0 +1,16 @@
+{
+  "benchmark_id": "MFE-RP2-MATRIX-BENCHMARK-v1",
+  "units":{"k":1.0,"v":1.0},
+  "coordinate":"w in R",
+  "rotations":{"R12":[["cos(alpha)","-sin(alpha)",0],["sin(alpha)","cos(alpha)",0],[0,0,1]],"R23":[[1,0,0],[0,"cos(beta)","-sin(beta)"],[0,"sin(beta)","cos(beta)"]]},
+  "profile_equation":"dF_X/dw = -(M_X + tanh(w)Y_X + 0.5*A0'(w)*I) F_X",
+  "fundamental_condition":"F_X_fund(0) = I3",
+  "profile_solver_contract":{"future_basis":["fundamental U(0)=I","G=integral U^T U","whiten by G^-1/2","W=integral w Ftilde^T Ftilde","diagonalize W","sort increasing position","global sign by largest absolute anchor with lexicographic ties"],"future_convergence":{"domain":[-20.0,20.0],"output_spacing":0.001,"integrator":"DOP853","rtol":1e-11,"atol":1e-13,"domains":[16.0,20.0,24.0],"output_spacings":[0.002,0.001]},"conventions":{"axes":"F_X[w_index, orientation_component_a, flavor_mode_i]","phase":"one global sign per mode; largest-magnitude anchor; lexicographic ties; no independent rephasing at each w","no_cp_phase":true,"no_rephasing_per_w":true}},
+  "background": {"psi":"tanh(w)","A0":"-(1/3)*((2/3)*log(cosh(w))-(1/6)*sech(w)^2+1/6)","warp_parameters":{"overall":{"numerator":-1,"denominator":3},"log_cosh_coefficient":{"numerator":2,"denominator":3},"sech_squared_coefficient":{"numerator":-1,"denominator":6},"constant":{"numerator":1,"denominator":6}}},
+  "sectors":{"Q":{"Y":[8.0,9.0,10.0],"D":[5.2,0.0,-6.5],"angles":{"alpha":0.18,"beta":-0.14}},"D":{"Y":[9.0,10.0,11.0],"D":[7.02,-1.2,-8.58],"angles":{"alpha":-0.27,"beta":0.21}}},
+  "asymptotic":{"B_plus_shift":-0.1111111111111111,"B_minus_shift":0.1111111111111111},
+  "higgs_kernel":{"formula":"N_h*exp(A0(w))*sech(w-0.25)^2","normalization":"integral |h|^2 dw = 1","parameters":{"warp_exponent":1,"center":0.25,"sech_power":2}},
+  "validation_tolerances":{"finite_values_required":true,"rotation_orthogonality_max_abs":1e-13,"matrix_symmetry_max_abs":1e-13,"Y_min_eigenvalue":1e-12,"asymptotic_sign_margin_min":1e-6,"commutator_relative_min":1e-6,"A0_derivative_fd_max_abs":1e-8,"A0_asymptotic_derivative_max_abs":1e-12,"h_normalization_max_abs":1e-12,"h_finite_domain_relative_error_max_by_W":{"16":1e-20,"20":1e-20,"24":1e-20},"h_tail_fraction_max_by_W":{"16":1e-20,"20":1e-20,"24":1e-20},"high_precision_numpy_full_relative_error_max":5e-12,"high_precision_numpy_Nh_relative_error_max":5e-12,"high_precision_numpy_tail_relative_error_max":1e-2,"canonical_recomputation_required":true},
+  "validation_contract":{"version":"3","precision_decimal_digits":60,"reference_domain":[-64.0,64.0],"numpy_spacing":0.001,"grid_spacing_absolute_tolerance":1e-12,"terminal_newline_required":true,"payload_hash_includes_terminal_newline":false,"encoding":"UTF-8","tail_cutoffs":[16.0,20.0,24.0],"finite_domain_convergence_domains":[16.0,20.0,24.0],"A0prime_finite_difference_step":1e-6,"A0prime_sample_points":[-2.0,-1.0,-0.5,0.5,1.0,2.0],"endpoint_positions":[-20.0,20.0],"canonical_serialization":{"sort_keys":true,"separators":[",",":"],"ensure_ascii":false,"allow_nan":false},"expected_validator_filename":"matrix_profile_benchmark_validate.py","expected_validator_sha256":"01B679CA4650DFD42897E5209E16FC0B8CD750C28F209C5613451C446C8C55EF"},
+  "scientific_boundaries":["profiles not solved","K_ab not computed","RP2 scan not performed","no CW-68/CW-69 reproduction"]
+}

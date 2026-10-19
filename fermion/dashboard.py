@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 import webbrowser
@@ -24,10 +26,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+from .dashboard_ui import PAGE as FRIENDLY_PAGE
+from .system_prompt import load_system_prompt
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 LIVE_MARKER = "windows_ui"
 LLM_CONTROL_OPERATIONS = frozenset({"reference", "regression", "live_gate", "llm_stop"})
+OWNER_WRITE_OPERATIONS = frozenset({"inspect_file", "create_file", "append_text", "replace_text"})
+OWNER_WRITE_PROTECTED_PARTS = frozenset({".git", "protocols"})
 
 
 @dataclass
@@ -64,6 +71,7 @@ class DashboardController:
         self._lock = threading.Lock()
         self._runtime = None
         self._control_plane = None
+        self._gods_eye_view = None
 
     @staticmethod
     def _temp_root() -> Path:
@@ -89,6 +97,8 @@ class DashboardController:
                     "--basetemp", str(temp), "-m", LIVE_MARKER, "-v")
         if operation in {"llm_start", "llm_stop"}:
             return ("internal", "llama-server", operation.removeprefix("llm_"))
+        if operation in {"gev_start", "gev_stop"}:
+            return ("internal", "gods-eye-view", operation.removeprefix("gev_"))
         raise ValueError(f"Unsupported dashboard operation: {operation}")
 
     def runtime(self):
@@ -106,6 +116,14 @@ class DashboardController:
             self._control_plane = shared_control_plane(self.project_root)
         return self._control_plane
 
+    def gods_eye_view(self):
+        """Create the loopback globe runtime lazily, keeping its logs off C:."""
+        if self._gods_eye_view is None:
+            from .adapters.gods_eye_view import GodsEyeViewRuntime
+
+            self._gods_eye_view = GodsEyeViewRuntime(source_root=self.project_root)
+        return self._gods_eye_view
+
     def start(self, operation: str, *, live_confirmed: bool = False) -> DashboardJob:
         command = self.command_for(operation, live_confirmed=live_confirmed)
         job = DashboardJob(uuid.uuid4().hex, operation, command)
@@ -121,6 +139,22 @@ class DashboardController:
                 status = self.runtime().start() if job.operation == "llm_start" else self.runtime().stop()
                 job.output = json.dumps({"running": status.running, "healthy": status.healthy,
                                          "model_path": status.model_path}, indent=2)
+                job.return_code = 0
+                job.status = "passed"
+            except Exception as error:
+                job.status = "failed"
+                job.output = f"{type(error).__name__}: {error}"
+            return
+        if job.operation in {"gev_start", "gev_stop"}:
+            try:
+                runtime = self.gods_eye_view()
+                status = runtime.start() if job.operation == "gev_start" else runtime.stop()
+                if job.operation == "gev_start" and status.healthy:
+                    webbrowser.open(status.url)
+                job.output = json.dumps({
+                    "running": status.running, "healthy": status.healthy, "url": status.url,
+                    "pid": status.pid, "tree_present": status.tree_present,
+                }, indent=2)
                 job.return_code = 0
                 job.status = "passed"
             except Exception as error:
@@ -161,25 +195,162 @@ class DashboardController:
         try:
             runtime_status = self.runtime().status()
             model = {"configured": runtime_status.configured, "running": runtime_status.running,
-                     "healthy": runtime_status.healthy, "path": runtime_status.model_path}
+                     "healthy": runtime_status.healthy, "path": runtime_status.model_path,
+                     "identifier": self.runtime().config.model_identifier}
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as error:
             model = {"configured": False, "running": False, "healthy": False, "error": str(error)}
+        try:
+            system_prompt = load_system_prompt(self.project_root)
+            prompt = {"configured": system_prompt.configured, "path": system_prompt.path,
+                      "sha256": system_prompt.sha256}
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as error:
+            prompt = {"configured": False, "path": None, "sha256": None, "error": str(error)}
+        gev: dict[str, Any]
+        try:
+            globe = self.gods_eye_view().status(network=True)
+            gev = {"configured": globe.configured, "running": globe.running, "healthy": globe.healthy,
+                   "url": globe.url, "pid": globe.pid, "tree_present": globe.tree_present,
+                   "node_present": globe.node_present, "dependencies_installed": globe.dependencies_installed}
+        except (OSError, ValueError) as error:
+            gev = {"configured": False, "running": False, "healthy": False, "error": str(error)}
         return {
             "core": {"parameters": 193, "state": "frozen reference"},
             "project": str(self.project_root),
             "live_ui_armed": os.environ.get("FERMION_LIVE_UI") == "1",
             "disk": {"free_gb": round(disk.free / 1024 ** 3, 2), "drive": self.project_root.drive},
             "model": model,
+            "gods_eye_view": gev,
             "safety": {
                 "ownership": "dynamic / fail closed",
                 "mutations": "EXCLUSIVE or SHARED_AUTHORIZED only",
                 "live_gate": "explicit confirmation required",
             },
+            "workspace_write": self.workspace_write_authority(),
+            "system_prompt": prompt,
         }
+
+    def workspace_write_authority(self) -> dict[str, Any]:
+        """Return the fixed owner-authorized workspace write boundary."""
+        authorized = False
+        try:
+            payload = json.loads((self.project_root / "fermion.local.json").read_text(encoding="utf-8"))
+            authorized = payload.get("dashboard", {}).get("workspace_write_authorized") is True
+        except (OSError, AttributeError, json.JSONDecodeError):
+            authorized = False
+        return {
+            "authorized": authorized,
+            "root": str(self.project_root.resolve()),
+            "operations": sorted(OWNER_WRITE_OPERATIONS),
+            "protected": sorted(OWNER_WRITE_PROTECTED_PARTS),
+            "delete_authorized": False,
+            "rename_authorized": False,
+        }
+
+    def _owner_workspace_write_approved(self, plan: Any) -> bool:
+        """Authorize only fixed create/update actions beneath this project root."""
+        authority = self.workspace_write_authority()
+        actions = getattr(plan, "actions", ())
+        if not authority["authorized"] or not actions:
+            return False
+        root = self.project_root.resolve()
+        for action in actions:
+            if action.application != "coding_sandbox" or action.operation not in OWNER_WRITE_OPERATIONS:
+                return False
+            raw_path = action.arguments.get("path")
+            if not isinstance(raw_path, str) or not raw_path.strip():
+                return False
+            candidate = Path(raw_path)
+            resolved = (candidate if candidate.is_absolute() else root / candidate).resolve()
+            if resolved != root and root not in resolved.parents:
+                return False
+            relative_parts = resolved.relative_to(root).parts
+            if any(part.lower() in OWNER_WRITE_PROTECTED_PARTS for part in relative_parts):
+                return False
+        return True
 
     def get_job(self, identifier: str) -> DashboardJob | None:
         with self._lock:
             return self.jobs.get(identifier)
+
+    def _model_completion(self, prompt: str, *, temperature: float,
+                          max_output_tokens: int = 1_536) -> str:
+        """Generate text using either llama.cpp-native or OpenAI-compatible HTTP."""
+        config = self.runtime().config
+        system_prompt = load_system_prompt(self.project_root)
+        endpoint = config.endpoint or ""
+        if not endpoint:
+            raise RuntimeError("The local model endpoint is not configured.")
+        estimated_prompt_tokens = max(1, (len(prompt) + len(system_prompt.content) + 3) // 4)
+        available_tokens = config.context_size - estimated_prompt_tokens - 256
+        if available_tokens < 64:
+            raise RuntimeError("The FERMiON capability context is too large for the configured model context.")
+        generation_tokens = min(config.max_tokens, available_tokens, max_output_tokens)
+        parsed_endpoint = urllib.parse.urlsplit(endpoint)
+        use_lm_studio_native = bool(
+            config.model_identifier
+            and parsed_endpoint.hostname in {"127.0.0.1", "localhost", "::1"}
+            and parsed_endpoint.port == 1234
+        )
+        if use_lm_studio_native:
+            endpoint = urllib.parse.urlunsplit((
+                parsed_endpoint.scheme or "http",
+                parsed_endpoint.netloc,
+                "/api/v1/chat",
+                "",
+                "",
+            ))
+            request_data = {
+                "model": config.model_identifier,
+                "system_prompt": system_prompt.content,
+                "input": prompt,
+                "reasoning": "off",
+                "store": False,
+                "context_length": config.context_size,
+                "temperature": temperature,
+                "max_output_tokens": generation_tokens,
+            }
+        elif endpoint.rstrip("/").endswith("/v1/completions"):
+            endpoint = endpoint.rstrip("/")[:-len("/completions")] + "/chat/completions"
+            request_data = {
+                "messages": [{"role": "system", "content": system_prompt.content},
+                             {"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": generation_tokens,
+            }
+            if config.model_identifier:
+                request_data["model"] = config.model_identifier
+        elif endpoint.rstrip("/").endswith("/v1/chat/completions"):
+            request_data = {
+                "messages": [{"role": "system", "content": system_prompt.content},
+                             {"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": generation_tokens,
+            }
+            if config.model_identifier:
+                request_data["model"] = config.model_identifier
+        else:
+            request_data = {
+                "prompt": prompt,
+                "temperature": temperature,
+                "n_predict": generation_tokens,
+            }
+        headers = {"Content-Type": "application/json"}
+        if config.api_key:
+            headers["Authorization"] = f"Bearer {config.api_key}"
+        request = urllib.request.Request(endpoint, json.dumps(request_data).encode("utf-8"), headers)
+        try:
+            with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
+                data = json.loads(response.read())
+        except urllib.error.HTTPError as error:
+            # Provider error bodies may echo prompts and private reasoning.
+            raise RuntimeError(f"Local model request failed (HTTP {error.code})") from None
+        except urllib.error.URLError as error:
+            raise RuntimeError(f"Local model request failed: {error.reason}") from error
+        from .adapters.llama_cpp import public_completion_text
+        result = public_completion_text(data)
+        if not result:
+            raise RuntimeError("Local model returned an empty response.")
+        return result
 
     def assistant(self, message: str, *, execute_authorized: bool = False,
                   live_confirmed: bool = False) -> dict[str, Any]:
@@ -193,10 +364,14 @@ class DashboardController:
             raise ValueError("Enter a question for the local model.")
         if len(message) > 4_000:
             raise ValueError("Message is limited to 4,000 characters.")
+        from .cognitive.link_routing import classify_link_request, reference_reply
+        link_route = classify_link_request(message)
+        if link_route and link_route.intent == "reference_received":
+            return {"reply": reference_reply(link_route.urls), "operation": None,
+                    "executed": False, "mode": "reference_received"}
         runtime = self.runtime()
         if not runtime.health(timeout=0.5):
             raise RuntimeError("Local model is not running. Start it from the Model panel first.")
-        config = runtime.config
         context = json.dumps({"canonical_core": "193 parameters / frozen",
                               "ownership": "dynamic; fail closed",
                               "execution": "only dashboard-approved operations may run"})
@@ -210,18 +385,7 @@ class DashboardController:
             "operation or null). Be concise and state uncertainty.\n"
             f"System context: {context}\nUser: {message}\nAssistant:"
         )
-        payload = json.dumps({"prompt": prompt, "temperature": config.temperature,
-                              "n_predict": config.max_tokens}).encode("utf-8")
-        request = urllib.request.Request(config.endpoint or "", payload,
-                                         {"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
-                data = json.loads(response.read())
-        except urllib.error.URLError as error:
-            raise RuntimeError(f"Local model request failed: {error.reason}") from error
-        raw_reply = str(data.get("content") or data.get("choices", [{}])[0].get("text", "")).strip()
-        if not raw_reply:
-            raise RuntimeError("Local model returned an empty response.")
+        raw_reply = self._model_completion(prompt, temperature=runtime.config.temperature)
         reply, operation = self._parse_control_reply(raw_reply)
         result: dict[str, Any] = {"reply": reply, "operation": operation, "executed": False}
         if operation == "live_gate" and not live_confirmed:
@@ -232,40 +396,195 @@ class DashboardController:
             result.update({"executed": True, "job": job.as_dict()})
         return result
 
-    def agent(self, message: str, *, execute: bool = False) -> dict[str, Any]:
+    def capability_catalog(self) -> dict[str, Any]:
+        """Return a UI-friendly view of every registered application operation."""
+        applications = []
+        operation_count = 0
+        for name, item in self.control_plane().manifest().items():
+            capabilities = [
+                {
+                    "operation": capability["operation"],
+                    "description": capability.get("description", ""),
+                    "required_arguments": capability.get("required_arguments", []),
+                    "mutating": bool(capability.get("mutating")),
+                }
+                for capability in item.get("capabilities", [])
+            ]
+            operation_count += len(capabilities)
+            applications.append({
+                "name": name,
+                "description": item.get("description", ""),
+                "capabilities": capabilities,
+            })
+        return {
+            "application_count": len(applications),
+            "operation_count": operation_count,
+            "applications": applications,
+        }
+
+    @staticmethod
+    def _conversation_context(history: Any) -> list[dict[str, str]]:
+        """Validate a small untrusted browser transcript for conversational follow-ups."""
+        if history is None:
+            return []
+        if not isinstance(history, list):
+            raise ValueError("Conversation history must be a list.")
+        if len(history) > 12:
+            history = history[-12:]
+        normalized: list[dict[str, str]] = []
+        total = 0
+        for turn in history:
+            if not isinstance(turn, dict) or set(turn) != {"role", "content"}:
+                raise ValueError("Each conversation turn must contain only role and content.")
+            role = turn.get("role")
+            content = turn.get("content")
+            if role not in {"user", "assistant"} or not isinstance(content, str):
+                raise ValueError("Conversation turns require a user/assistant role and text content.")
+            content = content.strip()
+            if role == "assistant":
+                from .adapters.llama_cpp import strip_model_reasoning
+                content = strip_model_reasoning(content)
+                if not content:
+                    continue
+            if not content or len(content) > 2_000:
+                raise ValueError("Conversation turns must contain 1 to 2,000 characters.")
+            total += len(content)
+            if total > 12_000:
+                raise ValueError("Conversation history is limited to 12,000 characters.")
+            normalized.append({"role": role, "content": content})
+        return normalized
+
+    @staticmethod
+    def _direct_capability_answer(message: str, manifest: dict[str, Any]) -> str | None:
+        """Answer factual registry questions directly instead of asking the LLM to rediscover state."""
+        normalized = " ".join(message.lower().split())
+        asks_for_programs = "program" in normalized and any(
+            phrase in normalized for phrase in ("list", "access", "available", "which", "what")
+        )
+        if not asks_for_programs:
+            return None
+        state = manifest.get("local_programs", {}).get("current_state", {})
+        programs = state.get("registered_programs", []) if isinstance(state, dict) else []
+        if not isinstance(programs, list) or not programs:
+            return "No local programs are currently registered with FERMiON."
+        lines = ["I can access these registered programs:"]
+        for program in programs:
+            if not isinstance(program, dict):
+                continue
+            alias = str(program.get("alias", "unnamed")).replace("_", " ")
+            description = str(program.get("description", "")).strip()
+            lines.append(f"• {alias}" + (f" — {description}" if description else ""))
+        lines.append("I can list them without approval. Launching or closing one still requires approval.")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _direct_status_application(message: str, manifest: dict[str, Any]) -> str | None:
+        """Resolve an exact no-argument, read-only status request from the manifest."""
+        normalized = " ".join(message.lower().strip().split())
+        match = re.fullmatch(
+            r"(?:show|get|check|display|what is|what's) (?:the )?(.+?) status[?.!]?",
+            normalized,
+        )
+        if match is None:
+            return None
+        requested = match.group(1).replace("_", "-").replace(" ", "-")
+        matches = []
+        for name, application in manifest.items():
+            if name.lower().replace("_", "-") != requested or not isinstance(application, dict):
+                continue
+            capabilities = application.get("capabilities", [])
+            if any(
+                isinstance(capability, dict)
+                and capability.get("operation") == "status"
+                and capability.get("required_arguments") == []
+                and capability.get("mutating") is False
+                for capability in capabilities
+            ):
+                matches.append(name)
+        return matches[0] if len(matches) == 1 else None
+
+    @staticmethod
+    def _status_reply(application: str, report: dict[str, Any]) -> str:
+        records = report.get("records", [])
+        if not records:
+            return f"The {application.replace('_', ' ')} status request returned no record."
+        result = records[0].get("result", {})
+        if not result.get("success"):
+            return f"I could not read the {application.replace('_', ' ')} status: {result.get('error', 'unknown error')}"
+        details = result.get("details", {})
+        return f"{application.replace('_', ' ').title()} status:\n{json.dumps(details, indent=2, default=str)}"
+
+    def agent(self, message: str, *, execute: bool = False,
+              history: Any = None) -> dict[str, Any]:
         """Plan and, only when directly authorized, execute adapter operations."""
         message = message.strip()
         if not message:
             raise ValueError("Describe the program task you want FERMiON to perform.")
         if len(message) > 4_000:
             raise ValueError("Message is limited to 4,000 characters.")
+        conversation = self._conversation_context(history)
+        from .cognitive.link_routing import classify_link_request, reference_reply
+        link_route = classify_link_request(message)
+        if link_route and link_route.intent == "reference_received":
+            return {"reply": reference_reply(link_route.urls), "plan": None,
+                    "validation": {"valid": True, "reasons": []},
+                    "executed": False, "mode": "reference_received"}
+        plane = self.control_plane()
+        manifest_data = plane.manifest()
+        direct_reply = self._direct_capability_answer(message, manifest_data)
+        if direct_reply is not None:
+            return {
+                "reply": direct_reply,
+                "plan": None,
+                "validation": {"valid": True, "reasons": []},
+                "executed": False,
+                "mode": "registry_answer",
+            }
+        status_application = self._direct_status_application(message, manifest_data)
+        if status_application is not None:
+            encoded = json.dumps({
+                "summary": f"Read {status_application} status.",
+                "actions": [{
+                    "application": status_application,
+                    "operation": "status",
+                    "arguments": {},
+                }],
+                "requires_approval": False,
+            })
+            plan = plane.parse_plan(message, encoded)
+            validation = plane.validate(plan)
+            if not validation.valid:
+                raise RuntimeError("The direct status capability did not pass control-plane validation.")
+            report = plane.execute(plan, approved=False).to_dict()
+            return {
+                "reply": self._status_reply(status_application, report),
+                "plan": asdict(plan),
+                "validation": asdict(validation),
+                "executed": True,
+                "report": report,
+                "mode": "typed_read_only",
+            }
         runtime = self.runtime()
         if not runtime.health(timeout=0.5):
-            raise RuntimeError("Local model is not running. Start it from the Model panel first.")
-        plane = self.control_plane()
-        manifest = json.dumps(plane.manifest(), sort_keys=True)
+            raise RuntimeError("No local model is loaded. Select Start local model, then try again.")
+        manifest = json.dumps(manifest_data, sort_keys=True)
+        conversation_text = json.dumps(conversation, ensure_ascii=False)
         from .cognitive.tool_bridge import ToolCallParseError, parse_qwen_bridge_plan, qwen_bridge_instruction
-        bridge_instruction = qwen_bridge_instruction(plane.manifest())
+        bridge_instruction = qwen_bridge_instruction(manifest_data)
         prompt = (
             "You are FERMiON's program-control planner. Convert the user's request into a single JSON object, "
             "with no prose or markdown. Use only the applications and capabilities in the manifest. "
-            "Never invent a program, command, file path, or capability. Each action must contain application, "
+            "Never invent a program, file path, or capability. You may construct an argv list only for the "
+            "registered coding_sandbox.run capability when the user's request calls for execution. Each action must contain application, "
             "operation, arguments, and optionally expected_effect. Use requires_approval=true whenever any "
-            "action changes state. If the request cannot be done using the manifest, return an empty actions array "
-            "and explain why in summary.\n"
-            f"Manifest: {manifest}\n{bridge_instruction}\nUser request: {message}\nJSON or bridge markup:"
+            "action changes state. For questions, explanations, or capability discovery, use an empty actions "
+            "array and answer naturally in summary. If the request cannot be done using the manifest, return an "
+            "empty actions array and explain why in summary. Use the conversation only as context; the latest user "
+            "request is authoritative.\n"
+            f"Manifest: {manifest}\nConversation: {conversation_text}\n{bridge_instruction}\n"
+            f"Latest user request: {message}\nJSON or bridge markup:"
         )
-        config = runtime.config
-        payload = json.dumps({"prompt": prompt, "temperature": 0.1,
-                              "n_predict": config.max_tokens}).encode("utf-8")
-        request = urllib.request.Request(config.endpoint or "", payload,
-                                         {"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
-                data = json.loads(response.read())
-        except urllib.error.URLError as error:
-            raise RuntimeError(f"Local model request failed: {error.reason}") from error
-        raw = str(data.get("content") or data.get("choices", [{}])[0].get("text", "")).strip()
+        raw = self._model_completion(prompt, temperature=0.1)
         try:
             encoded_plan = self._extract_json_object(raw)
         except ValueError:
@@ -275,10 +594,23 @@ class DashboardController:
                 raise ValueError("The local model did not return a valid FERMiON JSON or bridge plan.") from error
         plan = plane.parse_plan(message, encoded_plan)
         validation = plane.validate(plan)
-        output: dict[str, Any] = {"plan": asdict(plan), "validation": asdict(validation), "executed": False}
-        if execute and validation.valid:
-            report = plane.execute(plan, approved=True)
-            output.update({"executed": True, "report": report.to_dict()})
+        output: dict[str, Any] = {
+            "reply": plan.summary,
+            "plan": asdict(plan),
+            "validation": asdict(validation),
+            "executed": False,
+        }
+        if validation.valid:
+            owner_write_approved = self._owner_workspace_write_approved(plan)
+            report = plane.execute(plan, approved=execute or owner_write_approved)
+            executed = bool(report.records) and report.validation.valid
+            output.update({
+                "executed": executed,
+                "owner_workspace_write_authorized": owner_write_approved,
+                "requires_approval": not report.validation.valid
+                and "user approval is required before executing this plan" in report.validation.reasons,
+                "report": report.to_dict(),
+            })
         return output
 
     def bridge(self, markup: str, *, execute: bool = False) -> dict[str, Any]:
@@ -300,7 +632,9 @@ class DashboardController:
 
     @staticmethod
     def _extract_json_object(text: str) -> str:
+        """Extract the last complete plan, ignoring earlier Qwen thinking drafts."""
         decoder = json.JSONDecoder()
+        candidates: list[dict[str, Any]] = []
         for index, character in enumerate(text):
             if character != "{":
                 continue
@@ -308,8 +642,15 @@ class DashboardController:
                 value, _ = decoder.raw_decode(text[index:])
             except json.JSONDecodeError:
                 continue
-            if isinstance(value, dict):
-                return json.dumps(value)
+            if (
+                isinstance(value, dict)
+                and isinstance(value.get("summary"), str)
+                and isinstance(value.get("actions"), list)
+                and type(value.get("requires_approval")) is bool
+            ):
+                candidates.append(value)
+        if candidates:
+            return json.dumps(candidates[-1])
         raise ValueError("The local model did not return a JSON control plan.")
 
     @staticmethod
@@ -363,11 +704,16 @@ async function runBridge(){const box=document.getElementById('bridgeMarkup'),det
 state();
 </script></body></html>'''
 
+# The conversation-first interface is kept separate from the local HTTP/control
+# implementation so its layout can evolve without weakening the execution path.
+PAGE = FRIENDLY_PAGE
+
 
 def make_handler(controller: DashboardController):
     class Handler(BaseHTTPRequestHandler):
         def _json(self, status: int, payload: dict[str, Any]) -> None:
-            body = json.dumps(payload).encode("utf-8")
+            from .adapters.llama_cpp import without_provider_reasoning
+            body = json.dumps(without_provider_reasoning(payload)).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -384,6 +730,8 @@ def make_handler(controller: DashboardController):
                 self.wfile.write(body)
             elif self.path == "/api/status":
                 self._json(HTTPStatus.OK, controller.status())
+            elif self.path == "/api/capabilities":
+                self._json(HTTPStatus.OK, controller.capability_catalog())
             elif self.path.startswith("/api/jobs/"):
                 job = controller.get_job(self.path.rsplit("/", 1)[-1])
                 self._json(HTTPStatus.OK, job.as_dict()) if job else self._json(HTTPStatus.NOT_FOUND, {"error": "Unknown job."})
@@ -406,7 +754,8 @@ def make_handler(controller: DashboardController):
                     return
                 if self.path == "/api/agent":
                     self._json(HTTPStatus.OK, controller.agent(
-                        str(payload.get("message", "")), execute=bool(payload.get("execute"))
+                        str(payload.get("message", "")), execute=bool(payload.get("execute")),
+                        history=payload.get("history"),
                     ))
                     return
                 if self.path == "/api/bridge":

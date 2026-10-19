@@ -16,5 +16,5 @@ windows-ui = ["pywinauto>=0.6.9"]
 fermion = "fermion.__main__:main"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "FERMiON-CoreLM/tests"]
 markers = ["windows_ui: requires an interactive Windows desktop, Notepad, and pywinauto"]

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import json
 import hashlib
 from io import BytesIO
@@ -75,11 +77,35 @@ def test_control_plane_manifest_includes_current_registered_adapter_state(tmp_pa
     assert "notepad_sandbox" in manifest and "coding_sandbox" in manifest and "self_evolver" in manifest and "nmap_reports" in manifest and "local_programs" in manifest
     assert "llama_runtime" in manifest and "fermion_science" in manifest and "vendor_inventory" in manifest
     assert "ciphey" in manifest and "bettercap" in manifest and "codex" in manifest
+    assert "gods_eye_view" in manifest
+    gev = next(item for item in manifest["gods_eye_view"]["capabilities"] if item["operation"] == "start")
+    assert gev["mutating"] is True and gev["required_arguments"] == []
     assert "current_state" in manifest["local_programs"]
     assert "C:" in manifest["notepad_sandbox"]["description"]
-    assert "No run" in manifest["coding_sandbox"]["description"]
+    assert manifest["coding_sandbox"]["description"] == "Run"
+    run = next(item for item in manifest["coding_sandbox"]["capabilities"] if item["operation"] == "run")
+    assert run["required_arguments"] == ["command"] and run["mutating"] is True
     assert manifest["self_evolver"]["current_state"]["initialized"] is False
     assert "cannot run Nmap" in manifest["nmap_reports"]["description"]
+
+
+def test_coding_run_requires_control_plane_approval(tmp_path):
+    plane = default_control_plane(tmp_path)
+    plan = plane.parse_plan("Run a bounded command", json.dumps({
+        "summary": "Run one approved process.",
+        "requires_approval": False,
+        "actions": [{
+            "application": "coding_sandbox",
+            "operation": "run",
+            "arguments": {"command": [sys.executable, "-c", "print('approved-run')"]},
+        }],
+    }))
+    denied = plane.execute(plan, approved=False)
+    assert not denied.validation.valid and denied.records == ()
+    approved = plane.execute(plan, approved=True)
+    assert approved.validation.valid
+    assert approved.records[0].result.success
+    assert approved.records[0].result.details["stdout"].strip() == "approved-run"
 
 
 def test_control_plane_evolver_requires_approval_and_records_a_bounded_run(tmp_path):

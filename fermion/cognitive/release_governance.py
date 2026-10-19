@@ -1,7 +1,6 @@
-"""Read-only release readiness governance from authoritative runtime evidence."""
+"""Read-only release readiness; missing release evidence never implies success."""
 from __future__ import annotations
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
 from .capability_registry import CapabilityRegistry
@@ -20,10 +19,16 @@ class ReleaseGovernor:
         confirmed=[x for x in anomalies if x["state"]=="regression_confirmed"]
         tests=(self.root/"tests").is_dir(); manifest=(self.root/"pyproject.toml").is_file(); digest=hashlib.sha256((self.root/"pyproject.toml").read_bytes()).hexdigest() if manifest else "unknown"
         versions=declared_versions or {"language":"0","fermion_architecture":"0","benchmark_suite":"0","ir":"1"}
-        blockers=[]
+        # Test assets and package metadata are inspectable facts, but neither binds
+        # a passing benchmark result to the current source. This API does not yet
+        # receive such a release attestation, so preserve that uncertainty.
+        blockers=["BENCHMARK_EVIDENCE_UNVERIFIED", "PROVENANCE_UNVERIFIED"]
         if critical_blocked:blockers.append("CRITICAL_CAPABILITY_BLOCKED")
         if confirmed:blockers.append("REGRESSION_CONFIRMED_UNRESOLVED")
         if not tests:blockers.append("BENCHMARK_EVIDENCE_MISSING")
         if not manifest:blockers.append("PROVENANCE_INVALID")
-        verdict="RELEASE_BLOCKED" if blockers else "RELEASE_READY_WITH_WARNINGS" if critical_degraded else "RELEASE_READY"
-        return ReleaseReadiness("release_candidate_"+digest[:12],versions,{"critical_blocked":critical_blocked,"critical_degraded":critical_degraded},{"regression_confirmed":len(confirmed),"unresolved":len(anomalies)},{"passed":tests,"blocking_failures":[] if tests else ["tests_directory_missing"]},{"manifest_valid":manifest,"hashes_valid":manifest,"consistency_valid":manifest},{"unresolved":[x["capability_id"] for x in anomalies]},verdict,tuple(blockers))
+        benchmarks = {"passed": False, "status": "unverified", "test_assets_present": tests,
+                      "blocking_failures": ["source_bound_release_result_unavailable"]}
+        provenance = {"manifest_valid": False, "hashes_valid": False,
+                      "consistency_valid": False, "package_metadata_present": manifest}
+        return ReleaseReadiness("release_candidate_"+digest[:12],versions,{"critical_blocked":critical_blocked,"critical_degraded":critical_degraded},{"regression_confirmed":len(confirmed),"unresolved":len(anomalies)},benchmarks,provenance,{"unresolved":[x["capability_id"] for x in anomalies]},"RELEASE_BLOCKED",tuple(blockers))

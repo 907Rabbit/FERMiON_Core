@@ -1,4 +1,8 @@
-"""Trainable recurrent FERMiON cognitive state and explicit (F, K) dynamics."""
+"""Quarantined research-only recurrent state. Untrained. Not on the default chat path.
+
+Ordinary conversation must not treat this network as intelligence. Enable it only
+for explicit ablations via RuntimeConfig.quarantine_cognitive_network = False.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -25,7 +25,6 @@ import os
 from pathlib import Path
 import random
 import runpy
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -350,10 +349,11 @@ def evolve_population(
     history: list[dict] = []
     for generation in range(generations):
         sigma = max(0.025, 0.5 * (1.0 - generation / max(1, generations - 1)))
-        ranked = sorted(
-            population,
-            key=lambda genome: weighted_mse(genome, training) + 1e-6 * complexity(genome),
-        )
+        fitness = {
+            genome: weighted_mse(genome, training) + 1e-6 * complexity(genome)
+            for genome in set(population)
+        }
+        ranked = sorted(population, key=fitness.__getitem__)
         best = ranked[0]
         history.append(
             {
@@ -369,10 +369,11 @@ def evolve_population(
             child = crossover(rng.choice(parents), rng.choice(parents), rng)
             next_population.append(mutate(child, rng, sigma=sigma))
         population = next_population
-    return min(
-        population,
-        key=lambda genome: weighted_mse(genome, training) + 1e-6 * complexity(genome),
-    ), history
+    final_fitness = {
+        genome: weighted_mse(genome, training) + 1e-6 * complexity(genome)
+        for genome in set(population)
+    }
+    return min(population, key=final_fitness.__getitem__), history
 
 
 class SafeSelfEvolver:
@@ -403,6 +404,20 @@ class SafeSelfEvolver:
             raise EvolutionError("active strategy is missing")
         if sha256_file(self.active_path) != state["active_sha256"]:
             raise EvolutionError("active strategy hash mismatch")
+        versions = state["versions"]
+        if not isinstance(versions, list) or any(not isinstance(item, dict) for item in versions):
+            raise EvolutionError("state versions are malformed")
+        active_version = state["active_version"]
+        if type(active_version) is not int or active_version < 1:
+            raise EvolutionError("active version is invalid")
+        matching = [item for item in versions if item.get("version") == active_version]
+        if len(matching) != 1:
+            raise EvolutionError("active version does not match exactly one version entry")
+        active_entry = matching[0]
+        if active_entry.get("sha256") != state["active_sha256"]:
+            raise EvolutionError("active version hash does not match state")
+        if active_entry.get("genome") != state["active_genome"]:
+            raise EvolutionError("active version genome does not match state")
         return state
 
     def active_genome(self) -> Genome:
@@ -444,7 +459,8 @@ class SafeSelfEvolver:
         if any(abs(a - b) > 1e-12 for a, b in zip(generated, expected)):
             raise EvolutionError("generated source does not match its genome")
 
-    def promote(self, genome: Genome, validation_mse: float, test_mse: float, seed: int) -> dict:
+    def promote(self, genome: Genome, validation_mse: float, test_mse: float, seed: int,
+                dataset_seeds: dict[str, int] | None = None) -> dict:
         source = source_for_genome(genome)
         validate_strategy_source(source)
         candidate_path = self.workspace / "candidate_strategy.py"
@@ -457,7 +473,7 @@ class SafeSelfEvolver:
             version_path = self.versions_path / f"strategy_v{version_number:04d}.py"
             if version_path.exists():
                 raise EvolutionError("version path already exists")
-            shutil.copyfile(candidate_path, version_path)
+            atomic_write_text(version_path, source)
             version_sha = sha256_file(version_path)
             atomic_write_text(self.active_path, source)
             active_sha = sha256_file(self.active_path)
@@ -470,6 +486,7 @@ class SafeSelfEvolver:
                 "validation_mse": validation_mse,
                 "test_mse_report_only": test_mse,
                 "seed": seed,
+                "dataset_seeds": dict(dataset_seeds) if dataset_seeds is not None else None,
                 "genome": genome.to_json(),
             }
             versions.append(entry)
@@ -494,31 +511,62 @@ class SafeSelfEvolver:
         if state is None or len(state["versions"]) < 2:
             raise EvolutionError("no previous promoted version is available")
         current = int(state["active_version"])
-        previous_entry = state["versions"][current - 2]
+        current_indices = [
+            index for index, item in enumerate(state["versions"])
+            if item.get("version") == current
+        ]
+        if len(current_indices) != 1 or current_indices[0] == 0:
+            raise EvolutionError("no previous promoted version is available")
+        previous_entry = state["versions"][current_indices[0] - 1]
         previous_path = Path(previous_entry["path"])
         if not previous_path.is_file() or sha256_file(previous_path) != previous_entry["sha256"]:
             raise EvolutionError("rollback version failed provenance verification")
         source = previous_path.read_text(encoding="utf-8")
         validate_strategy_source(source)
         atomic_write_text(self.active_path, source)
+        restored_sha = sha256_file(self.active_path)
+        if restored_sha != previous_entry["sha256"]:
+            raise EvolutionError("restored active file hash mismatch")
         state["active_version"] = previous_entry["version"]
         state["active_genome"] = previous_entry["genome"]
-        state["active_sha256"] = sha256_file(self.active_path)
+        state["active_sha256"] = restored_sha
         atomic_write_json(self.state_path, state)
         event = {
             "event": "rollback",
             "time_ns": time.time_ns(),
             "from_version": current,
             "to_version": previous_entry["version"],
-            "sha256": state["active_sha256"],
+            "sha256": restored_sha,
         }
         append_jsonl(self.audit_path, event)
         return event
 
-    def evolve(self, seed: int, generations: int, population_size: int, minimum_improvement: float) -> dict:
-        training = make_dataset(seed=1001, count=160)
-        validation = make_dataset(seed=2002, count=80)
-        test = make_dataset(seed=3003, count=80)
+    def evolve(
+        self,
+        seed: int,
+        generations: int,
+        population_size: int,
+        minimum_improvement: float,
+        train_seed: int = 1001,
+        val_seed: int = 2002,
+        test_seed: int = 3003,
+    ) -> dict:
+        if any(type(value) is not int for value in (seed, train_seed, val_seed, test_seed)):
+            raise EvolutionError("evolution and dataset seeds must be integers")
+        if len({train_seed, val_seed, test_seed}) != 3:
+            raise EvolutionError("training, validation, and test seeds must be distinct")
+        if type(generations) is not int or generations < 1:
+            raise EvolutionError("generations must be a positive integer")
+        if type(population_size) is not int or population_size < 8:
+            raise EvolutionError("population size must be an integer of at least 8")
+        if not isinstance(minimum_improvement, (int, float)) or isinstance(minimum_improvement, bool):
+            raise EvolutionError("minimum improvement must be numeric")
+        minimum_improvement = float(minimum_improvement)
+        if not math.isfinite(minimum_improvement) or not 0.0 <= minimum_improvement < 1.0:
+            raise EvolutionError("minimum improvement must lie in [0, 1)")
+        training = make_dataset(seed=train_seed, count=160)
+        validation = make_dataset(seed=val_seed, count=80)
+        test = make_dataset(seed=test_seed, count=80)
         feedback = self.feedback_examples()
         # Feedback changes the optimization objective but does not alter the frozen
         # synthetic validation/test sets. It therefore cannot manufacture a pass.
@@ -532,6 +580,11 @@ class SafeSelfEvolver:
         candidate_test = weighted_mse(candidate, test)
         result = {
             "seed": seed,
+            "dataset_seeds": {
+                "training": train_seed,
+                "validation": val_seed,
+                "test": test_seed,
+            },
             "generations": generations,
             "population_size": population_size,
             "feedback_examples": len(feedback),
@@ -546,7 +599,10 @@ class SafeSelfEvolver:
             "candidate_genome": candidate.to_json(),
         }
         if promoted:
-            result["promotion"] = self.promote(candidate, candidate_validation, candidate_test, seed)
+            result["promotion"] = self.promote(
+                candidate, candidate_validation, candidate_test, seed,
+                dataset_seeds=result["dataset_seeds"],
+            )
         else:
             append_jsonl(
                 self.audit_path,
@@ -554,6 +610,7 @@ class SafeSelfEvolver:
                     "event": "reject",
                     "time_ns": time.time_ns(),
                     "seed": seed,
+                    "dataset_seeds": result["dataset_seeds"],
                     "active_validation_mse": active_validation,
                     "candidate_validation_mse": candidate_validation,
                     "candidate_genome": candidate.to_json(),
@@ -572,6 +629,11 @@ class SafeSelfEvolver:
             "version_count": len(state["versions"]) if state else 0,
             "feedback_count": len(self.feedback_examples()),
         }
+
+    def list_versions(self) -> list[dict]:
+        """Return promoted version metadata after verifying active state provenance."""
+        state = self._read_state()
+        return list(state["versions"]) if state else []
 
 
 def run_self_tests() -> dict:
@@ -628,11 +690,17 @@ def build_parser() -> argparse.ArgumentParser:
     evolve_parser.add_argument("--generations", type=int, default=60)
     evolve_parser.add_argument("--population", type=int, default=80)
     evolve_parser.add_argument("--minimum-improvement", type=float, default=0.001)
+    evolve_parser.add_argument("--train-seed", type=int, default=1001)
+    evolve_parser.add_argument("--val-seed", type=int, default=2002)
+    evolve_parser.add_argument("--test-seed", type=int, default=3003)
 
     demo_parser = subparsers.add_parser("demo", help="run tests and one evolution cycle")
     demo_parser.add_argument("--seed", type=int, default=42)
     demo_parser.add_argument("--generations", type=int, default=60)
     demo_parser.add_argument("--population", type=int, default=80)
+    demo_parser.add_argument("--train-seed", type=int, default=1001)
+    demo_parser.add_argument("--val-seed", type=int, default=2002)
+    demo_parser.add_argument("--test-seed", type=int, default=3003)
 
     feedback_parser = subparsers.add_parser("feedback", help="record a weighted interaction example")
     feedback_parser.add_argument("--x", type=float, required=True)
@@ -641,6 +709,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("status", help="verify and display current state")
     subparsers.add_parser("rollback", help="restore the previous promoted strategy")
+    subparsers.add_parser("versions", help="list all promoted versions")
     subparsers.add_parser("self-test", help="run deterministic safety/provenance tests")
     subparsers.add_parser("prompt", help="print the implementation prompt")
     return parser
@@ -662,14 +731,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(evolver.status(), indent=2))
         elif args.command == "rollback":
             print(json.dumps(evolver.rollback(), indent=2))
+        elif args.command == "versions":
+            print(json.dumps(evolver.list_versions(), indent=2))
         elif args.command == "evolve":
-            if not 0.0 <= args.minimum_improvement < 1.0:
-                raise EvolutionError("minimum improvement must lie in [0, 1)")
-            result = evolver.evolve(args.seed, args.generations, args.population, args.minimum_improvement)
+            result = evolver.evolve(
+                args.seed, args.generations, args.population, args.minimum_improvement,
+                args.train_seed, args.val_seed, args.test_seed,
+            )
             print(json.dumps(result, indent=2))
         elif args.command == "demo":
             tests = run_self_tests()
-            result = evolver.evolve(args.seed, args.generations, args.population, minimum_improvement=0.001)
+            result = evolver.evolve(
+                args.seed, args.generations, args.population, minimum_improvement=0.001,
+                train_seed=args.train_seed, val_seed=args.val_seed, test_seed=args.test_seed,
+            )
             print(json.dumps({"self_tests": tests, "evolution": result, "status": evolver.status()}, indent=2))
         else:
             raise EvolutionError(f"unknown command: {args.command}")

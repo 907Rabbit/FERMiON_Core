@@ -3,7 +3,7 @@ from fermion.cognitive.llm import contains_unverified_claim, extract_final_answe
 
 def test_qwen_thinking_output_exposes_only_final_answer() -> None:
     reasoning, answer = extract_final_answer("<think>private chain</think>Hello from FERMiON.")
-    assert reasoning == "private chain"
+    assert reasoning == ""
     assert answer == "Hello from FERMiON."
 
 

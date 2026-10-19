@@ -23,6 +23,7 @@ from .adapters.imhex import ImHexReadOnlyAdapter
 from .adapters.internet import InternetAdapter
 from .adapters.coding import CodingSandboxAdapter, CodingSandboxConfig
 from .adapters.self_evolver import SelfEvolverAdapter, SelfEvolverConfig
+from .adapters.evolution_kernel import EvolutionKernelAdapter, EvolutionKernelConfig
 from .adapters.nmap_reports import NmapReportAdapter, NmapReportConfig
 from .adapters.llama_runtime import LlamaRuntimeAdapter
 from .adapters.science import FermionScienceAdapter
@@ -30,6 +31,7 @@ from .adapters.vendor_inventory import VendorInventoryAdapter
 from .adapters.ciphey import CipheyAdapter
 from .adapters.vendored_surfaces import (bettercap_adapter, codex_adapter, ghosttrack_adapter,
                                          hackingtool_adapter, spiderfoot_adapter)
+from .adapters.gods_eye_view import GodsEyeViewAdapter
 from .software.application import (Action, ApplicationIntelligenceKernel, ApplicationInterface,
                                    AuditLog, DummyWorldModel, TransitionRecord)
 
@@ -276,6 +278,7 @@ def default_control_plane(runtime_root: Path | None = None) -> ApplicationContro
     ))
     coding = CodingSandboxAdapter(CodingSandboxConfig(
         root / "CodingSandbox", (Path("C:/"), Path("D:/"), Path("F:/"), Path("G:/")), launch_enabled=True,
+        execution_root=Path.cwd(),
     ))
     plane.register(RegisteredApplication(
         "coding_sandbox", coding,
@@ -287,8 +290,10 @@ def default_control_plane(runtime_root: Path | None = None) -> ApplicationContro
             ActionSpecification("rename_file", ("path", "new_path"), "Rename a source or text file.", True),
             ActionSpecification("delete_file", ("path",), "Delete a source or text file.", True),
             ActionSpecification("open_in_editor", ("path",), "Open a file in the configured editor; never execute it."),
+            ActionSpecification("run", ("command",),
+                                "Run an argv command in the workspace with shell expansion disabled.", True),
         ),
-        "Source/text files under C:, D:, F:, or G: (including subfolders). No run, compile, terminal, or shell capability.",
+        "Run",
     ))
     evolver = SelfEvolverAdapter(SelfEvolverConfig(root / "SelfEvolver"))
     plane.register(RegisteredApplication(
@@ -300,6 +305,16 @@ def default_control_plane(runtime_root: Path | None = None) -> ApplicationContro
             ActionSpecification("rollback", (), "Restore the previous promoted strategy.", True),
         ),
         "FERMiON-owned generated-strategy workspace only. It cannot modify controller/source files or execute arbitrary code.",
+    ))
+    evolution_kernel = EvolutionKernelAdapter(EvolutionKernelConfig(root / "SelfEvolutionKernel"))
+    plane.register(RegisteredApplication(
+        "self_evolution_kernel", evolution_kernel,
+        (
+            ActionSpecification("status", (), "Describe the separate CW-71 kernel and its bounds."),
+            ActionSpecification("simulate", ("cycles",),
+                                "Run a bounded deterministic CW-71 simulation and return its evidence."),
+        ),
+        "Separate CW-71 neural simulation available to the LLM; it does not replace the safe self-evolver.",
     ))
     reports_root = root / "nmap-reports"
     reports_root.mkdir(parents=True, exist_ok=True)
@@ -419,5 +434,15 @@ def default_control_plane(runtime_root: Path | None = None) -> ApplicationContro
             ActionSpecification("list_catalog", (), "Empty catalog; Codex is not a FERMiON executor."),
         ),
         "Inspect-only. Codex is not granted shell or source-edit authority.",
+    ))
+    plane.register(RegisteredApplication(
+        "gods_eye_view", GodsEyeViewAdapter(state_dir=root / "gods-eye-view"),
+        (
+            ActionSpecification("status", (), "Report the localhost globe without launching it."),
+            ActionSpecification("start", (), "Start the vendored globe on 127.0.0.1 only.", True),
+            ActionSpecification("stop", (), "Stop the FERMiON-managed globe process.", True),
+            ActionSpecification("open", (), "Open the localhost globe in the system browser.", True),
+        ),
+        "Localhost-only Vite lifecycle for the vendored God's Eye View globe. Live feeds stay inside GEV; FERMiON does not proxy them or treat globe output as authority.",
     ))
     return plane

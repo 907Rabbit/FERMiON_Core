@@ -7,6 +7,7 @@ import ast
 import csv
 import io
 import os
+import re
 import signal
 import subprocess
 import time
@@ -20,12 +21,84 @@ from typing import Any
 from fermion.hr.contracts import CandidateProgram, ProgramKind
 
 
+def strip_model_reasoning(text: str) -> str:
+    """Keep public output only; discard complete or unfinished thought sections.
+
+    Closing markers can arrive without an opening marker when a model template
+    supplies the opening tag.  Everything through the last closing marker is
+    private in that case as well.  Never return the discarded text to callers.
+    """
+    if not isinstance(text, str):
+        return ""
+    closing = list(re.finditer(r"</(?:think|thinking|analysis)\s*>", text, re.I))
+    if closing:
+        text = text[closing[-1].end():]
+    opening = re.search(r"<(?:think|thinking|analysis)\s*>", text, re.I)
+    if opening:
+        text = text[:opening.start()]
+    return text.strip()
+
+
+def without_provider_reasoning(value: Any) -> Any:
+    """Copy structured metadata without provider-private reasoning fields.
+
+    FERMiON's own structured `reasoning` diagnostics are separate from provider
+    reasoning and remain available. Public completion text is filtered above.
+    """
+    if isinstance(value, dict):
+        return {key: without_provider_reasoning(item) for key, item in value.items()
+                if key not in {"reasoning_content", "reasoning_details", "thinking_content"}}
+    if isinstance(value, (list, tuple)):
+        return [without_provider_reasoning(item) for item in value]
+    return value
+
+
+def _public_content(value: object) -> str:
+    if isinstance(value, str):
+        return strip_model_reasoning(value)
+    if isinstance(value, list):
+        # Provider reasoning/thinking blocks and their signatures are never text.
+        parts = [item["text"] for item in value
+                 if isinstance(item, dict) and item.get("type") in {"text", "output_text"}
+                 and isinstance(item.get("text"), str)]
+        return strip_model_reasoning("\n".join(parts))
+    return ""
+
+
+def public_completion_text(payload: object) -> str:
+    """Extract public text from native or compatible responses by allow-list.
+
+    Never fall back to reasoning_content, reasoning, thinking, or reasoning
+    details, including when public content is missing or empty.
+    """
+    if not isinstance(payload, dict):
+        return ""
+    output = payload.get("output")
+    if isinstance(output, list):
+        return strip_model_reasoning("\n".join(
+            _public_content(item.get("content")) for item in output
+            if isinstance(item, dict) and item.get("type") == "message"
+        ))
+    choices = payload.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices else {}
+    if isinstance(choice, dict):
+        message = choice.get("message")
+        if isinstance(message, dict):
+            # An explicit empty chat answer must stay empty, even if another
+            # compatibility field happens to contain an intermediate draft.
+            return _public_content(message.get("content"))
+        if "text" in choice:
+            return _public_content(choice["text"])
+    return _public_content(payload.get("content"))
+
+
 @dataclass(frozen=True)
 class LlamaCppConfig:
     endpoint: str | None = "http://127.0.0.1:8080/completion"
     executable: str | None = None
     server_executable: str | None = None
     model_path: str | None = None
+    model_identifier: str | None = None
     timeout_seconds: float = 60.0
     final_timeout_seconds: float | None = None
     temperature: float = 0.4
@@ -41,6 +114,7 @@ class LlamaCppConfig:
     reasoning_format: str | None = None
     candidate_mode: str = "structured"
     api_key: str | None = None
+    embeddings_identifier: str | None = None
 
     @classmethod
     def from_file(cls, path: str | Path) -> "LlamaCppConfig":
@@ -97,7 +171,7 @@ class LlamaCppAdapter:
         request = urllib.request.Request(self.config.endpoint or "", payload, headers)
         with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
             result = json.loads(response.read())
-        return result.get("content") or result.get("choices", [{}])[0].get("text", "")
+        return public_completion_text(result)
 
     def _cli(self, prompt: str, schema: dict[str, Any] | None = None) -> str:
         if not self.config.executable or not self.config.model_path:
@@ -112,7 +186,7 @@ class LlamaCppAdapter:
         completed = subprocess.run(command,
                                    capture_output=True, text=True,
                                    timeout=self.config.timeout_seconds, check=True)
-        return completed.stdout
+        return strip_model_reasoning(completed.stdout)
 
     @staticmethod
     def _prompt(goal: str, observation: dict[str, Any], count: int) -> str:
@@ -164,7 +238,7 @@ class LlamaCppAdapter:
                         return candidate
                     except SyntaxError:
                         continue
-        raise ValueError(f"llama.cpp did not return valid Python source: {text[:240]!r}")
+        raise ValueError("llama.cpp did not return valid Python source")
 
     @staticmethod
     def _infer_artifacts(source: str) -> tuple[str, ...]:
@@ -198,7 +272,7 @@ class LlamaCppAdapter:
                 items = value
                 break
         if items is None:
-            raise ValueError(f"llama.cpp response did not contain a valid JSON candidate array: {text[:240]!r}")
+            raise ValueError("llama.cpp response did not contain a valid JSON candidate array")
         candidates = []
         for index, item in enumerate(items[:count]):
             if not isinstance(item, dict) or "source" not in item:
@@ -252,7 +326,9 @@ class LlamaServerRuntime:
                 request = urllib.request.Request(endpoint, headers=self._authorization())
                 with urllib.request.urlopen(request, timeout=timeout) as response:
                     payload = json.loads(response.read())
-                if payload.get("status") == "ok" or isinstance(payload.get("data"), list):
+                if payload.get("status") == "ok" or (
+                    isinstance(payload.get("data"), list) and bool(payload["data"])
+                ):
                     return True
             except (OSError, ValueError, urllib.error.URLError):
                 continue
@@ -269,6 +345,11 @@ class LlamaServerRuntime:
     def start(self, wait_seconds: float = 180.0) -> LlamaServerStatus:
         if self.health():
             return self.status()
+        if self._lm_studio_available() and self.config.model_identifier:
+            self._load_lm_studio_model()
+            if self.health():
+                return self.status()
+            raise RuntimeError("LM Studio accepted the model load request but no loaded model is available.")
         executable = Path(self.config.server_executable or "")
         model = Path(self.config.model_path or "")
         if not executable.is_file():
@@ -306,6 +387,37 @@ class LlamaServerRuntime:
                 raise RuntimeError(f"llama-server exited with code {process.returncode}; see {self.stderr_path}")
             time.sleep(1.0)
         raise TimeoutError(f"llama-server did not become healthy within {wait_seconds:g} seconds")
+
+    def _lm_studio_available(self) -> bool:
+        """Return whether an LM Studio v1 model-management endpoint is available."""
+        endpoint = f"http://{self.config.host}:{self.config.port}/api/v1/models"
+        try:
+            request = urllib.request.Request(endpoint, headers=self._authorization())
+            with urllib.request.urlopen(request, timeout=2.0) as response:
+                payload = json.loads(response.read())
+            return isinstance(payload.get("models"), list)
+        except (OSError, ValueError, urllib.error.URLError):
+            return False
+
+    def _load_lm_studio_model(self) -> None:
+        """Load the configured downloaded model through LM Studio's local REST API."""
+        if not self.config.model_identifier:
+            raise ValueError("LM Studio model_identifier is not configured")
+        endpoint = f"http://{self.config.host}:{self.config.port}/api/v1/models/load"
+        payload = json.dumps({
+            "model": self.config.model_identifier,
+            "context_length": self.config.context_size,
+        }).encode("utf-8")
+        headers = {"Content-Type": "application/json", **self._authorization()}
+        request = urllib.request.Request(endpoint, payload, headers)
+        try:
+            with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
+                result = json.loads(response.read())
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace").strip()
+            raise RuntimeError(f"LM Studio model load failed (HTTP {error.code}): {detail[:500]}") from error
+        if result.get("status") != "loaded":
+            raise RuntimeError(f"LM Studio did not confirm the model load: {result}")
 
     def stop(self) -> LlamaServerStatus:
         pid = self._pid()

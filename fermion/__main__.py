@@ -45,9 +45,13 @@ def main() -> None:
     dashboard = commands.add_parser("dashboard", help="open the local FERMiON control console")
     dashboard.add_argument("--port", type=int, default=8765)
     dashboard.add_argument("--no-browser", action="store_true", help="serve without opening the default browser")
+    gev = commands.add_parser("gev", help="manage the local God's Eye View globe")
+    gev.add_argument("action", choices=("status", "start", "stop"))
     integration_verify = commands.add_parser("integration-verify", help="verify manifest, scientific gates, and provenance without executing actions")
-    integration_verify.add_argument("--manifest", required=True, help="path to an immutable first-party manifest")
-    integration_verify.add_argument("--gates", required=True, help="path to an immutable scientific-gate registry")
+    integration_verify.add_argument("--manifest", default=None,
+                                    help="path to an immutable first-party manifest; defaults to the pointer-designated canonical manifest")
+    integration_verify.add_argument("--gates", default=None,
+                                    help="path to an immutable scientific-gate registry; defaults to the pointer-designated canonical registry")
     ai_g2s_verify = commands.add_parser("ai-g2s-verify", help="verify the AI-G2S P1.1 source/config bundle without running it")
     ai_g2s_verify.add_argument("--source-manifest", required=True, help="path to the AI-G2S P1.1 source manifest")
     ai_g2s_verify.add_argument("--detached-provenance", help="optional detached P1.1 provenance envelope")
@@ -167,11 +171,24 @@ def main() -> None:
     elif args.command == "dashboard":
         from .dashboard import serve_dashboard
         serve_dashboard(port=args.port, open_browser=not args.no_browser)
+    elif args.command == "gev":
+        from .adapters.gods_eye_view import GodsEyeViewRuntime
+        runtime = GodsEyeViewRuntime()
+        if args.action == "start":
+            status = runtime.start()
+        elif args.action == "stop":
+            status = runtime.stop()
+        else:
+            status = runtime.status(network=True)
+        print(json.dumps(asdict(status), indent=2))
     elif args.command == "integration-verify":
-        from .cognitive.runtime_bootstrap import inspect_git_baseline, verify_integration
+        from .cognitive.runtime_bootstrap import inspect_git_baseline, integration_artifact_paths, verify_integration
         root = Path.cwd()
-        manifest, gates, provenance = verify_integration(root=root, manifest_path=Path(args.manifest),
-                                                         gate_registry_path=Path(args.gates))
+        default_manifest, default_gates = integration_artifact_paths(root)
+        manifest_path = Path(args.manifest) if args.manifest else default_manifest
+        gate_registry_path = Path(args.gates) if args.gates else default_gates
+        manifest, gates, provenance = verify_integration(root=root, manifest_path=manifest_path,
+                                                         gate_registry_path=gate_registry_path)
         baseline = inspect_git_baseline(root)
         print(json.dumps({"source_manifest_sha256": manifest.manifest_sha256,
                           "scientific_gate_registry_sha256": gates.registry_sha256,

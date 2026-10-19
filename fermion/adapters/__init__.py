@@ -9,6 +9,7 @@ from .local_program import LocalProgramAdapter, ProgramEntry
 from .imhex import ImHexReadOnlyAdapter
 from .internet import InternetAdapter
 from .coding import CodingSandboxAdapter, CodingSandboxConfig
+from .evolution_kernel import EvolutionKernelAdapter, EvolutionKernelConfig
 from .self_evolver import SelfEvolverAdapter, SelfEvolverConfig
 from .nmap_reports import NmapReportAdapter, NmapReportConfig
 from .llama_runtime import LlamaRuntimeAdapter
@@ -17,12 +18,14 @@ from .vendor_inventory import VendorInventoryAdapter
 from .ciphey import CipheyAdapter
 from .vendored_surfaces import (VendoredSurfaceAdapter, bettercap_adapter, codex_adapter,
                                 ghosttrack_adapter, hackingtool_adapter, spiderfoot_adapter)
+from .gods_eye_view import GodsEyeViewAdapter, GodsEyeViewRuntime
 
 __all__ = ["LlamaCppAdapter", "LlamaCppConfig", "LlamaServerRuntime",
            "UnrealAdapter", "UnrealConfig", "UnrealEditorAdapter", "NotepadConfig",
            "NotepadSandboxAdapter", "NotepadSafeLearningCatalog", "NotepadUIAdapter",
            "ClosedLoopNotepadAdapter", "PywinautoNotepadController", "LocalProgramAdapter", "ProgramEntry",
            "ImHexReadOnlyAdapter", "InternetAdapter", "CodingSandboxAdapter", "CodingSandboxConfig",
+           "EvolutionKernelAdapter", "EvolutionKernelConfig",
            "SelfEvolverAdapter", "SelfEvolverConfig", "NmapReportAdapter", "NmapReportConfig",
            "LlamaRuntimeAdapter", "FermionScienceAdapter", "VendorInventoryAdapter",
-           "CipheyAdapter", "VendoredSurfaceAdapter"]
+           "CipheyAdapter", "VendoredSurfaceAdapter", "GodsEyeViewAdapter", "GodsEyeViewRuntime"]

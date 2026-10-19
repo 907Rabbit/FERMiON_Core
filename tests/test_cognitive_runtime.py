@@ -31,7 +31,7 @@ def test_identity_uses_self_memory_not_unrelated_episodes(tmp_path: Path) -> Non
     runtime = CognitiveRuntime(RuntimeConfig(root=tmp_path))
     runtime.process("Explain Cahn-Hilliard mass conservation.")
     result = runtime.process("Hello. Tell me about yourself.")
-    assert "FERMiON is a local cognitive AI system" in result.reasoning["answer_seed"]
+    assert "FERMiON is a local evidence-gated research controller" in result.reasoning["answer_seed"]
     assert all("Cahn-Hilliard" not in memory for memory in result.reasoning["retrieved_memories"])
 
 

@@ -3,14 +3,21 @@ from __future__ import annotations
 import json
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 import time
-from dataclasses import asdict, dataclass
+import math
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from fermion.adapters.llama_cpp import LlamaCppAdapter, LlamaCppConfig, LlamaServerRuntime
+from fermion.adapters.llama_cpp import (
+    LlamaCppAdapter, LlamaCppConfig, LlamaServerRuntime,
+    public_completion_text, strip_model_reasoning,
+)
 from .evidence_grounding import EvidenceClaimValidator, EvidenceEnvelope
+from fermion.system_prompt import load_system_prompt
+from .prompting import build_prompt, estimate_tokens, PromptBudgetError
 
 @dataclass(frozen=True)
 class GenerationStatus:
@@ -18,17 +25,17 @@ class GenerationStatus:
     estimated_prompt_tokens: int; response_length: int; endpoint: str | None
     http_status: int | None = None; generation_budget: int = 0; raw_output_chars: int = 0
     think_marker_found: bool = False; final_output_chars: int = 0; finish_reason: str = "unknown"; retry_count: int = 0
-    llm_queue_ms: float = 0.0; llm_generation_ms: float = 0.0; timeout_stage: str | None = None
+    llm_queue_ms: float | None = None; llm_generation_ms: float | None = None; timeout_stage: str | None = None
+    request_ms: float = 0.0; prompt_build_ms: float = 0.0
+    prompt_tokens: int | None = None; completion_tokens: int | None = None; total_tokens: int | None = None
+    prompt_eval_ms: float | None = None; decode_ms: float | None = None
+    usage_source: str = "unavailable"; backend: str | None = None; request_count: int = 0
     def to_dict(self) -> dict[str, object]: return asdict(self)
 
 
 def extract_final_answer(text: str) -> tuple[str, str]:
-    """Split Qwen Thinking output without ever treating thought text as a reply."""
-    marker = "</think>"
-    if marker not in text:
-        return "", ""
-    reasoning, answer = text.rsplit(marker, 1)
-    return reasoning.replace("<think>", "").strip(), answer.strip()
+    """Keep the legacy tuple shape without returning any private reasoning."""
+    return "", strip_model_reasoning(text)
 
 
 def contains_unverified_claim(text: str) -> bool:
@@ -47,6 +54,7 @@ class LocalLanguageCortex:
         self.config: LlamaCppConfig | None = None
         self.last_reasoning = ""
         self.last_raw_metadata: dict[str, object] = {}
+        self.last_prompt_metadata: dict[str, object] = {}
         self.last_unsupported_claims: list[str] = []
         self.last_status = GenerationStatus(False, False, False, False, "LLM_NOT_CONFIGURED", 0, 0, None)
         local = root / "fermion.local.json"
@@ -57,125 +65,193 @@ class LocalLanguageCortex:
             self.config = LlamaCppConfig(**{**self.config.to_dict(), "model_path": model_path})
         self.agent_bridge = None
         self.evidence_validator = EvidenceClaimValidator()
+        self.system_prompt = load_system_prompt(root)
+        self._request_model = None
         if self.config:
             try:
                 from .agent_bridge import PydanticAgentBridge
-                self.agent_bridge = PydanticAgentBridge(self.config.endpoint, self.config.model_path)
+                self.agent_bridge = PydanticAgentBridge(
+                    self.config.endpoint,
+                    self.config.model_identifier,
+                    self.config.model_path,
+                    self.system_prompt.content,
+                    api_key=self.config.api_key,
+                )
             except (ImportError, ValueError): pass
 
     def available(self) -> bool:
         return bool(self.config and self.config.endpoint and LlamaServerRuntime(self.config).health(.25))
 
     @staticmethod
-    def _estimate_tokens(text: str) -> int: return max(1, (len(text) + 3) // 4)
+    def _estimate_tokens(text: str) -> int:
+        return estimate_tokens(text)
+
+    def _failure(self, reason: str, *, attempted: bool = False, request_ms: float = 0.0,
+                 backend: str | None = None, estimated: int = 0, budget: int = 0,
+                 http_status: int | None = None) -> None:
+        self.last_status = GenerationStatus(
+            bool(self.config), False, attempted, False, reason, estimated, 0,
+            self.config.endpoint if self.config else None, http_status=http_status,
+            generation_budget=budget, request_ms=request_ms, backend=backend,
+            request_count=int(attempted), timeout_stage="transport" if reason == "LLM_TIMEOUT" else None)
+        self.last_raw_metadata = {}
+
+    @staticmethod
+    def _usage_metadata(body: dict[str, Any]) -> dict[str, Any]:
+        usage, timings = body.get("usage"), body.get("timings")
+        usage = usage if isinstance(usage, dict) else {}
+        timings = timings if isinstance(timings, dict) else {}
+        def integer(value):
+            return value if type(value) is int and value >= 0 else None
+        def duration(value):
+            return float(value) if type(value) in (int, float) and math.isfinite(value) and value >= 0 else None
+        prompt = integer(usage.get("prompt_tokens", usage.get("input_tokens")))
+        completion = integer(usage.get("completion_tokens", usage.get("output_tokens")))
+        return {"prompt_tokens": prompt, "completion_tokens": completion,
+                "total_tokens": integer(usage.get("total_tokens")),
+                "prompt_eval_ms": duration(timings.get("prompt_ms")),
+                "decode_ms": duration(timings.get("predicted_ms")),
+                "usage_source": "provider" if prompt is not None or completion is not None else "unavailable"}
 
     def _request(self, prompt: str, *, requested_tokens: int | None = None, retry_count: int = 0,
                  timeout_seconds: float | None = None) -> str | None:
+        estimated = self._estimate_tokens(prompt + self.system_prompt.content) + 128
         if not self.config or not self.config.endpoint:
-            self.last_status = GenerationStatus(False, False, False, False, "LLM_NOT_CONFIGURED", self._estimate_tokens(prompt), 0, None); return None
-        healthy = self.available()
-        if not healthy:
-            self.last_status = GenerationStatus(True, False, False, False, "LLM_UNHEALTHY", self._estimate_tokens(prompt), 0, self.config.endpoint); return None
-        estimated = self._estimate_tokens(prompt); reserve = 128; available = self.config.context_size - estimated - reserve
-        if available < 128:
-            self.last_status = GenerationStatus(True, True, False, False, "LLM_CONTEXT_LIMIT", estimated, 0, self.config.endpoint); return None
+            self._failure("LLM_NOT_CONFIGURED", estimated=estimated)
+            return None
+        if not self.available():
+            self._failure("LLM_UNHEALTHY", estimated=estimated)
+            return None
+        available = self.config.context_size - estimated
         budget = min(requested_tokens or self.config.max_tokens, available)
-        endpoint = self.config.endpoint.replace("/completion", "/v1/chat/completions")
-        clean_prompt = prompt.replace("[INST]", "").replace("[/INST]", "").strip()
-        payload = json.dumps({"messages": [{"role": "system", "content": "You are FERMiON's local language layer. Keep private reasoning separate from the final answer."}, {"role": "user", "content": clean_prompt}], "temperature": self.config.temperature, "max_tokens": budget}).encode("utf-8")
-        request = urllib.request.Request(endpoint, payload, {"Content-Type": "application/json"})
+        if budget < 1:
+            self._failure("LLM_CONTEXT_LIMIT", estimated=estimated)
+            return None
+        parsed = urllib.parse.urlsplit(self.config.endpoint)
+        endpoint = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "/v1/chat/completions", "", ""))
+        request_data = {"messages": [{"role": "system", "content": self.system_prompt.content},
+                                     {"role": "user", "content": prompt}],
+                        "temperature": self.config.temperature, "max_tokens": budget}
+        model = getattr(self, "_request_model", None) or self.config.model_identifier
+        if model:
+            request_data["model"] = model
+        headers = {"Content-Type": "application/json"}
+        if getattr(self.config, "api_key", None):
+            headers["Authorization"] = "Bearer " + self.config.api_key
+        request = urllib.request.Request(endpoint, json.dumps(request_data).encode("utf-8"), headers)
         started = time.perf_counter()
-        request_timeout = timeout_seconds if timeout_seconds is not None else self.config.timeout_seconds
         try:
-            with urllib.request.urlopen(request, timeout=request_timeout) as response:
-                http_status = response.status; body = json.loads(response.read())
-        except TimeoutError:
-            self.last_status = GenerationStatus(True, True, True, False, "LLM_TIMEOUT", estimated, 0, self.config.endpoint, generation_budget=budget, retry_count=retry_count, llm_generation_ms=(time.perf_counter()-started)*1000, timeout_stage="http_client_generation"); return None
-        except urllib.error.HTTPError as error:
-            self.last_status = GenerationStatus(True, True, True, False, "LLM_HTTP_ERROR", estimated, 0, self.config.endpoint, http_status=error.code, generation_budget=budget, retry_count=retry_count, llm_generation_ms=(time.perf_counter()-started)*1000); return None
-        except (OSError, ValueError, json.JSONDecodeError):
-            self.last_status = GenerationStatus(True, True, True, False, "LLM_HTTP_ERROR", estimated, 0, self.config.endpoint, generation_budget=budget, retry_count=retry_count, llm_generation_ms=(time.perf_counter()-started)*1000); return None
-        choice = body.get("choices", [{}])[0]
-        message = choice.get("message", {}) if isinstance(choice, dict) else {}
-        content = str(message.get("content") or choice.get("text") or body.get("content") or "")
-        thought = str(message.get("reasoning_content") or "")
-        raw = f"<think>{thought}</think>{content}" if thought else content
-        finish = str(choice.get("finish_reason") or body.get("stop_type") or body.get("stop_reason") or "unknown")
-        self.last_raw_metadata = {"http_status": http_status, "generation_budget": budget, "raw_output_chars": len(raw), "finish_reason": finish, "response_keys": sorted(body.keys()), "chat_endpoint": endpoint}
-        if not raw.strip():
-            self.last_status = GenerationStatus(True, True, True, False, "LLM_EMPTY_RESPONSE", estimated, 0, endpoint, http_status=http_status, generation_budget=budget, raw_output_chars=0, finish_reason=finish, retry_count=retry_count, llm_generation_ms=(time.perf_counter()-started)*1000); return None
-        self.last_status = GenerationStatus(True, True, True, True, None, estimated, len(raw), endpoint, http_status=http_status, generation_budget=budget, raw_output_chars=len(raw), think_marker_found="</think>" in raw, finish_reason=finish, retry_count=retry_count, llm_generation_ms=(time.perf_counter()-started)*1000)
-        return raw
+            with urllib.request.urlopen(request, timeout=timeout_seconds or self.config.timeout_seconds) as response:
+                http_status = response.status
+                body = json.loads(response.read())
+        except Exception as error:
+            if not isinstance(error, (TimeoutError, OSError, ValueError)):
+                raise
+            reason = "LLM_TIMEOUT" if isinstance(error, TimeoutError) else "LLM_HTTP_ERROR"
+            self._failure(reason, attempted=True, request_ms=(time.perf_counter()-started)*1000,
+                          backend="http", estimated=estimated, budget=budget,
+                          http_status=error.code if isinstance(error, urllib.error.HTTPError) else None)
+            return None
+        elapsed = (time.perf_counter()-started)*1000
+        body = body if isinstance(body, dict) else {}
+        choices = body.get("choices")
+        choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+        raw = public_completion_text(body)
+        finish = str(choice.get("finish_reason") or body.get("stop_type") or "unknown")
+        usage = self._usage_metadata(body)
+        failure = "LLM_OUTPUT_TRUNCATED" if finish in {"length", "max_tokens"} else "LLM_EMPTY_RESPONSE" if not raw else None
+        self.last_raw_metadata = {"http_status": http_status, "generation_budget": budget,
+                                  "public_output_chars": len(raw), "finish_reason": finish}
+        self.last_status = GenerationStatus(
+            True, True, True, failure is None, failure, estimated, len(raw), endpoint,
+            http_status=http_status, generation_budget=budget, raw_output_chars=len(raw),
+            final_output_chars=len(raw), finish_reason=finish, retry_count=retry_count,
+            request_ms=elapsed, llm_generation_ms=usage["decode_ms"], backend="http", request_count=1, **usage)
+        return raw if failure is None else None
 
     def interpret(self, text: str) -> dict[str, Any]:
-        # A strict JSON boundary gives the cognitive backend machine-readable linguistic input.
-        prompt = "[INST] Return only valid JSON after reasoning: {intent:string, goal:string, entities:[string]}. Interpret this user text: " + text[:1500] + " [/INST]"
+        """Explicit optional interpretation API; ordinary chat does not call it."""
+        raw = self._request("Return JSON with intent, goal and entities for this text:\n" + text, requested_tokens=128)
+        if raw is None:
+            return {"source": "heuristic"}
         try:
-            raw = self._request(prompt, requested_tokens=128)
-            if raw is None: return {"source": "heuristic"}
-            reasoning, final = extract_final_answer(raw)
-            self.last_reasoning = reasoning
-            if not final: self._parse_failure("LLM_THINKING_TRUNCATED", prompt, raw); return {"source": "heuristic"}
-            payload = json.loads(final[final.find("{"):final.rfind("}")+1]); self._parse_success(prompt, raw)
+            payload = json.loads(raw)
+            if not isinstance(payload, dict):
+                raise ValueError("invalid interpretation")
             return {"source": "llama.cpp", **payload}
-        except (ValueError, json.JSONDecodeError): return {"source": "heuristic"}
+        except ValueError:
+            self._parse_failure("LLM_INVALID_INTERPRETATION", "", raw)
+            return {"source": "heuristic"}
 
-    def verbalize(self, cognitive_result: dict[str, Any]) -> str | None:
-        if self.config is None:
-            return None
-        envelope_payload = cognitive_result.get("evidence_envelope", {})
-        evidence_note = ("Read the EvidenceEnvelope and ClaimManifest as immutable, authoritative grounding. Verbalize only claims authorized by the ClaimManifest; do not add, upgrade, or audit claims. Never create, alter, infer, or reinterpret receipt IDs, hashes, commands, paths, exit codes, capability states, timestamps, or certification results. Label an interpretive conclusion as 'Inference:' when it goes beyond supplied evidence. "
-                         "Every evidence-sensitive statement must be exactly supported by the EvidenceEnvelope. "
-                         "Read evidence_policy and actions in the FERMiON result as authoritative. Never claim an action was "
-                         "executed, written, saved, retrieved, verified, measured, tested, or persisted unless the corresponding "
-                         "receipt is present and explicitly authorizes it. If a requested action was not completed, say so plainly "
-                         "and continue with the analytical portion where possible. ")
-        prompt = ("[INST] You are FERMiON's language output layer. FERMiON has already performed memory retrieval, "
-                  "cognitive processing, planning, scientific analysis, and metacognitive evaluation. Convert the supplied "
-                  "result into a clear, coherent final answer. Return only the answer after your reasoning. Do not reveal "
-                  "thought process, discuss JSON, describe retrieved memories unless relevant, second-guess FERMiON, or output "
-                  "<think> content. " + evidence_note + "\nORIGINAL USER REQUEST:\n" + str(cognitive_result.get("user_input", ""))[:4500] + "\nFERMiON STRUCTURED RESULT:\n" + json.dumps(cognitive_result, default=str)[:4000] + "\nCLAIM MANIFEST (READ ONLY):\n" + json.dumps(cognitive_result.get("claim_manifest", {}), default=str)[:3500] + "\nEVIDENCE ENVELOPE (READ ONLY):\n" + json.dumps(envelope_payload, default=str)[:5000] + "\n[/INST]")
-        # Primary interface: PydanticAI agent over the local OpenAI-compatible llama.cpp API.
-        # It receives no execution authority; FERMiON continues to own all tools and receipts.
-        if self.agent_bridge is not None:
-            try:
-                compact_agent_prompt=("Produce a concise user-facing answer. Do not invent facts, actions, receipts, "
-                                      "or measurements. State missing inputs plainly.\nUSER:\n"+str(cognitive_result.get("user_input",""))[:2200]+
-                                      "\nFERMiON CONTEXT:\n"+json.dumps(cognitive_result.get("reasoning",{}),default=str)[:1800]+
-                                      "\nREAD-ONLY CLAIM MANIFEST:\n"+json.dumps(cognitive_result.get("claim_manifest",{}),default=str)[:2200]+
-                                      "\nREAD-ONLY EVIDENCE ENVELOPE:\n"+json.dumps(envelope_payload,default=str)[:3000])
-                answer=self.agent_bridge.synthesize(compact_agent_prompt, max_tokens=min(1024, self.config.max_tokens))
-                if answer and not contains_unverified_claim(answer) and self._evidence_valid(answer, envelope_payload, cognitive_result.get("epistemic_context", {})): return answer
-                if answer:
-                    return self._unsupported_response(answer, envelope_payload, cognitive_result.get("epistemic_context", {}))
-            except Exception:
-                pass
+    def _generate(self, prompt: str, budget: int) -> str | None:
+        """One backend and at most one generation request per turn, without hidden fallback."""
+        timeout = getattr(self.config, "final_timeout_seconds", None) or self.config.timeout_seconds
+        if self.agent_bridge is None:
+            return self._request(prompt, requested_tokens=budget, timeout_seconds=timeout)
+        started = time.perf_counter()
         try:
-            raw = self._request(prompt, timeout_seconds=getattr(self.config, "final_timeout_seconds", None) or self.config.timeout_seconds)
-            if raw is None:
-                # Some Thinking-model/template combinations emit immediate EOS on a large structured prompt.
-                # Retry once with the same FERMiON result but a compact final-answer instruction.
-                if self.last_status.failure_reason not in {"LLM_EMPTY_RESPONSE", "LLM_CONTEXT_LIMIT"}: return None
-                prompt = self._concise_prompt(cognitive_result)
-                raw = self._request(prompt, retry_count=1, timeout_seconds=getattr(self.config, "final_timeout_seconds", None) or self.config.timeout_seconds)
-                if raw is None: return None
-            reasoning, answer = extract_final_answer(raw)
-            self.last_reasoning = reasoning
-            if not answer:
-                self._parse_failure("LLM_THINKING_TRUNCATED", prompt, raw)
-                if self.last_status.retry_count >= 1: return None
-                concise = self._concise_prompt(cognitive_result)
-                raw = self._request(concise, retry_count=1, timeout_seconds=getattr(self.config, "final_timeout_seconds", None) or self.config.timeout_seconds)
-                if raw is None: return None
-                reasoning, answer = extract_final_answer(raw); self.last_reasoning = reasoning
-                if not answer: self._parse_failure("LLM_THINKING_TRUNCATED", concise, raw); return None
-                self._parse_success(concise, raw)
-            # No receipt is supplied to ordinary chat; claims of completed external action are rejected.
-            if contains_unverified_claim(answer) or not self._evidence_valid(answer, envelope_payload, cognitive_result.get("epistemic_context", {})):
-                self._parse_failure("LLM_UNVERIFIED_CLAIM", prompt, raw)
-                return self._unsupported_response(answer, envelope_payload, cognitive_result.get("epistemic_context", {}))
-            self._parse_success(prompt, raw); return answer
-        except ValueError: return None
+            answer = strip_model_reasoning(self.agent_bridge.synthesize(
+                prompt, max_tokens=budget, timeout_seconds=timeout, temperature=self.config.temperature))
+        except Exception as error:
+            reason = "LLM_TIMEOUT" if "timeout" in type(error).__name__.lower() else "LLM_AGENT_ERROR"
+            self._failure(reason, attempted=True, request_ms=(time.perf_counter()-started)*1000,
+                          backend="pydantic_ai", estimated=self._estimate_tokens(prompt + self.system_prompt.content), budget=budget)
+            return None
+        metadata = getattr(self.agent_bridge, "last_metadata", {})
+        metadata = metadata if isinstance(metadata, dict) else {}
+        usage = self._usage_metadata({"usage": metadata})
+        finish = str(metadata.get("finish_reason") or "unknown")
+        failure = "LLM_OUTPUT_TRUNCATED" if finish in {"length", "max_tokens"} else "LLM_EMPTY_RESPONSE" if not answer else None
+        self.last_status = GenerationStatus(
+            True, True, True, failure is None, failure, self._estimate_tokens(prompt + self.system_prompt.content),
+            len(answer), self.config.endpoint, generation_budget=budget, raw_output_chars=len(answer),
+            final_output_chars=len(answer), finish_reason=finish, request_ms=(time.perf_counter()-started)*1000,
+            backend="pydantic_ai", request_count=1, **usage)
+        return answer if failure is None else None
+
+    def _prepared_generation(self, cognitive_result: dict[str, Any]) -> str | None:
+        self.last_reasoning = ""
+        self.last_raw_metadata = {}
+        self.last_prompt_metadata = {}
+        if self.config is None:
+            self._failure("LLM_NOT_CONFIGURED")
+            return None
+        started = time.perf_counter()
+        budget = self.config.max_tokens
+        try:
+            packet = build_prompt(cognitive_result, input_token_budget=(self.config.context_size - budget
+                                  - self._estimate_tokens(self.system_prompt.content) - 128))
+        except (ValueError, TypeError) as error:
+            self._failure("LLM_CONTEXT_LIMIT" if isinstance(error, PromptBudgetError) else "LLM_INVALID_CONTEXT")
+            return None
+        build_ms = (time.perf_counter()-started)*1000
+        self.last_prompt_metadata = {"estimated_prompt_tokens": packet.estimated_tokens,
+                                    "estimate_method": packet.estimate_method,
+                                    "dropped_history_messages": packet.dropped_history_messages,
+                                    "dropped_memory_items": packet.dropped_memory_items}
+        answer = self._generate(packet.text, budget)
+        self.last_status = replace(self.last_status, prompt_build_ms=build_ms)
+        return answer
+
+    def verbalize(self, cognitive_result: dict[str, Any], *, model_identifier: str | None = None) -> str | None:
+        self._request_model = model_identifier
+        try:
+            answer = self._prepared_generation(cognitive_result)
+        finally:
+            self._request_model = None
+        if answer is None:
+            return None
+        envelope = cognitive_result.get("evidence_envelope", {})
+        epistemic = cognitive_result.get("epistemic_context", {})
+        self.last_unsupported_claims = []
+        if contains_unverified_claim(answer) or not self._evidence_valid(answer, envelope, epistemic):
+            self._parse_failure("LLM_UNVERIFIED_CLAIM", "", answer)
+            return self._unsupported_response(answer, envelope, epistemic)
+        return answer
+
+    def complete_direct(self, text: str, history: list[dict[str, str]] | None = None) -> str | None:
+        """Same backend/config for evaluation, without FERMiON cognition or validators."""
+        return self._prepared_generation({"user_input": text, "conversation_history": history or []})
 
     def _evidence_valid(self, answer: str, payload: object, epistemic_context: object = None) -> bool:
         if not isinstance(payload, dict):
@@ -198,15 +274,13 @@ class LocalLanguageCortex:
         return "EVIDENCE_CLAIM_UNSUPPORTED: " + json.dumps(self.last_unsupported_claims)
 
     def _parse_success(self, prompt: str, raw: str) -> None:
-        prior = self.last_status
-        self.last_status = GenerationStatus(True, True, True, True, None, self._estimate_tokens(prompt), len(raw), prior.endpoint, http_status=prior.http_status, generation_budget=prior.generation_budget, raw_output_chars=len(raw), think_marker_found=True, final_output_chars=len(extract_final_answer(raw)[1]), finish_reason=prior.finish_reason, retry_count=prior.retry_count, llm_queue_ms=prior.llm_queue_ms, llm_generation_ms=prior.llm_generation_ms, timeout_stage=prior.timeout_stage)
+        self.last_status = replace(self.last_status, success=True, failure_reason=None,
+                                   response_length=len(raw), final_output_chars=len(strip_model_reasoning(raw)))
 
     def _parse_failure(self, reason: str, prompt: str, raw: str) -> None:
-        prior = self.last_status
-        self.last_status = GenerationStatus(True, True, True, False, reason, self._estimate_tokens(prompt), len(raw), prior.endpoint, http_status=prior.http_status, generation_budget=prior.generation_budget, raw_output_chars=len(raw), think_marker_found="</think>" in raw, final_output_chars=0, finish_reason=prior.finish_reason, retry_count=prior.retry_count, llm_queue_ms=prior.llm_queue_ms, llm_generation_ms=prior.llm_generation_ms, timeout_stage=prior.timeout_stage)
+        self.last_status = replace(self.last_status, success=False, failure_reason=reason,
+                                   response_length=len(raw), final_output_chars=0)
 
     @staticmethod
     def _concise_prompt(cognitive_result: dict[str, Any]) -> str:
-        return ("[INST] FERMiON has completed cognitive processing. Produce only the final user-facing answer. "
-                "Do not discuss internal reasoning or data structures.\nUSER:\n" + str(cognitive_result.get("user_input", ""))[:2200] +
-                "\nFERMiON RESULT:\n" + json.dumps(cognitive_result.get("reasoning", {}), default=str)[:1600] + "\n[/INST]")
+        return build_prompt(cognitive_result, input_token_budget=8192).text

@@ -1,0 +1,2 @@
+[console_scripts]
+fermion = fermion.__main__:main
