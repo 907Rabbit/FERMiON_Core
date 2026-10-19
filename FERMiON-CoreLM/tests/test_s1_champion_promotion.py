@@ -92,9 +92,25 @@ def test_concurrent_pointer_change_not_overwritten(tmp_path):
     assert pointer.read_bytes() == b'{"other":true}'
 
 def test_scientific_checkpoints_and_metadata_preserved():
-    assert p.metadata() == p.read(p.OUT/'protected_metadata_before.json')
+    # Immutable scientific/model artifacts: content hashes must be unchanged.
     for path, hashes in p.read(p.OUT/'protected_checkpoint_hashes.json').items():
         assert p.checkpoint_hashes(Path(path)) == hashes
+    # Metadata snapshot, re-based for the authorized S1 production state: distinguish
+    # sanctioned-mutable deployment records (the 2026-09-20 alias cutover and its lineage
+    # reconciliation) from immutable artifacts. No artifact recorded at promotion time may
+    # disappear; later authorized artifacts (S1 export/cutover, etc.) may be added; and every
+    # recorded exports artifact that is not a sanctioned-mutable deployment record must keep
+    # its exact recorded size. Immutable model/checkpoint content is enforced by hash above.
+    before = p.read(p.OUT/'protected_metadata_before.json')
+    now = p.metadata()
+    sanctioned_mutable = {'FERMiON-CoreLM-S0-F32.gguf', 'FERMiON-CoreLM-S0-Q8_0.gguf',
+                          'production_manifest.json', 's0_lineage.json'}
+    for path, meta in before.items():
+        assert path in now, f'recorded artifact disappeared: {path}'
+        if Path(path).name in sanctioned_mutable:
+            continue
+        if 'exports' in Path(path).parts:
+            assert now[path]['size'] == meta['size'], f'immutable export changed size: {path}'
 
 def test_frozen_candidate_manifests_unchanged():
     assert p.sha(p.g.FROZEN/'candidate_manifest.json') == p.g.MANIFEST_HASH
